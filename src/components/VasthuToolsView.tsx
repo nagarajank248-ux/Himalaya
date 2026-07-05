@@ -399,7 +399,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'SW Nairutya Stability Zone - Owner\'s bedroom.'
       });
 
-      // Parking & split Garden placement
       if (bedCount === 3) {
         list.push({
           name: 'BEDROOM 3',
@@ -433,7 +432,6 @@ export const VasthuToolsView: React.FC = () => {
           vastuNotes: 'NW Entry - Portico parking area.'
         });
         
-        // Add garden next to parking
         list.push({
           name: 'FRONT GARDEN',
           x: parkW,
@@ -543,7 +541,6 @@ export const VasthuToolsView: React.FC = () => {
     return list;
   };
 
-  // Helper to draw CAD dimension line with double arrows
   const drawDimensionLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, text: string) => {
     ctx.strokeStyle = '#fb8500'; 
     ctx.lineWidth = 1;
@@ -576,7 +573,7 @@ export const VasthuToolsView: React.FC = () => {
     ctx.translate(midX, midY);
     ctx.rotate(angle);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8px monospace';
+    ctx.font = 'bold 8.5px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(text, 0, -2);
@@ -587,139 +584,154 @@ export const VasthuToolsView: React.FC = () => {
   const drawBedBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#62899c'; 
     ctx.lineWidth = 0.8;
-    const bW = rw * 0.5;
-    const bH = rh * 0.55;
+    const bW = rw * 0.55;
+    const bH = rh * 0.58;
     const bx = rx + (rw - bW) / 2;
-    const by = ry + 4; // offset from wall
+    const by = ry + 6;
 
+    // Outer double-frame
     ctx.strokeRect(bx, by, bW, bH);
-    ctx.strokeRect(bx, by, bW, bH * 0.15); // Headboard
+    ctx.strokeRect(bx - 1.5, by - 1.5, bW + 3, bH + 3);
+    ctx.strokeRect(bx, by, bW, bH * 0.12); // Headboard
     
-    // 2 Pillows
-    const pW = bW * 0.35;
+    // 2 Pillows with pillowcase borders
+    const pW = bW * 0.38;
     const pH = bH * 0.18;
-    ctx.strokeRect(bx + (bW * 0.1), by + (bH * 0.18), pW, pH);
-    ctx.strokeRect(bx + (bW * 0.55), by + (bH * 0.18), pW, pH);
+    ctx.strokeRect(bx + (bW * 0.08), by + (bH * 0.16), pW, pH);
+    ctx.strokeRect(bx + (bW * 0.54), by + (bH * 0.16), pW, pH);
 
-    // Blanket sheet lines
+    // Folded quilt crease lines
+    ctx.strokeRect(bx, by + (bH * 0.44), bW, bH * 0.56);
     ctx.beginPath();
-    ctx.moveTo(bx, by + (bH * 0.45));
-    ctx.lineTo(bx + bW, by + (bH * 0.45));
+    ctx.moveTo(bx, by + (bH * 0.48));
+    ctx.bezierCurveTo(bx + (bW * 0.25), by + (bH * 0.44), bx + (bW * 0.75), by + (bH * 0.52), bx + bW, by + (bH * 0.48));
     ctx.stroke();
   };
 
   const drawCarBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#8ecae6'; 
     ctx.lineWidth = 1;
-    const cW = rw * 0.55;
-    const cH = rh * 0.72;
+    const cW = rw * 0.56;
+    const cH = rh * 0.75;
     const cx = rx + (rw - cW) / 2;
     const cy = ry + (rh - cH) / 2;
 
-    // Curved Car frame outline
+    // Curved Car frame outline (Autocad standard block style)
     ctx.beginPath();
-    ctx.moveTo(cx + 8, cy);
-    ctx.lineTo(cx + cW - 8, cy);
-    ctx.quadraticCurveTo(cx + cW, cy, cx + cW, cy + 8);
-    ctx.lineTo(cx + cW, cy + cH - 8);
-    ctx.quadraticCurveTo(cx + cW, cy + cH, cx + cW - 8, cy + cH);
-    ctx.lineTo(cx + 8, cy + cH);
-    ctx.quadraticCurveTo(cx, cy + cH, cx, cy + cH - 8);
-    ctx.lineTo(cx, cy + 8);
-    ctx.quadraticCurveTo(cx, cy, cx + 8, cy);
+    ctx.moveTo(cx + 10, cy);
+    ctx.lineTo(cx + cW - 10, cy);
+    ctx.quadraticCurveTo(cx + cW, cy, cx + cW, cy + 10);
+    ctx.lineTo(cx + cW, cy + cH - 10);
+    ctx.quadraticCurveTo(cx + cW, cy + cH, cx + cW - 10, cy + cH);
+    ctx.lineTo(cx + 10, cy + cH);
+    ctx.quadraticCurveTo(cx, cy + cH, cx, cy + cH - 10);
+    ctx.lineTo(cx, cy + 10);
+    ctx.quadraticCurveTo(cx, cy, cx + 10, cy);
     ctx.stroke();
 
-    // Windshield screen
+    // Windshield screen & Bonnet grill stripes
     ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.22), cW * 0.76, cH * 0.12);
-    // Back glass screen
-    ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.7), cW * 0.76, cH * 0.08);
+    ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.68), cW * 0.76, cH * 0.08); // back screen
+
+    ctx.beginPath();
+    ctx.moveTo(cx + (cW * 0.25), cy); ctx.lineTo(cx + (cW * 0.25), cy + (cH * 0.22));
+    ctx.moveTo(cx + (cW * 0.5), cy); ctx.lineTo(cx + (cW * 0.5), cy + (cH * 0.22));
+    ctx.moveTo(cx + (cW * 0.75), cy); ctx.lineTo(cx + (cW * 0.75), cy + (cH * 0.22));
+    ctx.stroke();
+
+    // Front seats & Steering wheel
+    ctx.strokeRect(cx + (cW * 0.18), cy + (cH * 0.28), cW * 0.26, cH * 0.14);
+    ctx.strokeRect(cx + (cW * 0.56), cy + (cH * 0.28), cW * 0.26, cH * 0.14);
+    ctx.beginPath();
+    ctx.arc(cx + (cW * 0.31), cy + (cH * 0.26), 3, 0, Math.PI * 2);
+    ctx.stroke();
 
     // Mirrors
-    ctx.strokeRect(cx - 3, cy + (cH * 0.26), 3, cH * 0.05);
-    ctx.strokeRect(cx + cW, cy + (cH * 0.26), 3, cH * 0.05);
+    ctx.strokeRect(cx - 3.5, cy + (cH * 0.24), 3.5, cH * 0.06);
+    ctx.strokeRect(cx + cW, cy + (cH * 0.24), 3.5, cH * 0.06);
 
-    // Headlights
-    ctx.beginPath();
-    ctx.arc(cx + (cW * 0.2), cy + 3, 2, 0, Math.PI * 2);
-    ctx.arc(cx + (cW * 0.8), cy + 3, 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffff00';
-    ctx.fill();
+    // Wheels slots
+    ctx.fillStyle = '#222222';
+    ctx.fillRect(cx - 2, cy + (cH * 0.12), 2, cH * 0.16);
+    ctx.fillRect(cx + cW, cy + (cH * 0.12), 2, cH * 0.16);
+    ctx.fillRect(cx - 2, cy + (cH * 0.68), 2, cH * 0.16);
+    ctx.fillRect(cx + cW, cy + (cH * 0.68), 2, cH * 0.16);
   };
 
   const drawSofaBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#62899c'; 
     ctx.lineWidth = 0.8;
     
-    // Sofa backing along the wall
-    const sx = rx + 6;
-    const sy = ry + 6;
-    const sW = rw * 0.75;
-    const sH = rh * 0.65;
+    const sx = rx + 8;
+    const sy = ry + 8;
+    const sW = rw * 0.76;
+    const sH = rh * 0.66;
     
-    ctx.strokeRect(sx, sy, sW, sH * 0.22);
-    // Seats lines
+    ctx.strokeRect(sx, sy, sW, sH * 0.22); // backing frame
+    ctx.strokeRect(sx - 2, sy, 2, sH * 0.6); // armrests left
+    ctx.strokeRect(sx + sW, sy, 2, sH * 0.6); // armrests right
+
+    // Seats segments
     ctx.strokeRect(sx, sy + (sH * 0.22), sW * 0.33, sH * 0.45);
     ctx.strokeRect(sx + (sW * 0.33), sy + (sH * 0.22), sW * 0.33, sH * 0.45);
     ctx.strokeRect(sx + (sW * 0.66), sy + (sH * 0.22), sW * 0.34, sH * 0.45);
 
     // Center Coffee table
-    ctx.strokeRect(sx + (sW * 0.2), sy + (sH * 0.8), sW * 0.6, sH * 0.2);
+    ctx.strokeRect(sx + (sW * 0.2), sy + (sH * 0.82), sW * 0.6, sH * 0.2);
   };
 
   const drawDiningBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#62899c'; 
     ctx.lineWidth = 0.8;
 
-    const tW = rw * 0.45;
-    const tH = rh * 0.45;
+    const tW = rw * 0.46;
+    const tH = rh * 0.46;
     const tx = rx + (rw - tW) / 2;
     const ty = ry + (rh - tH) / 2;
     
-    // Center Table
-    ctx.strokeRect(tx, ty, tW, tH);
+    ctx.strokeRect(tx, ty, tW, tH); // center table
 
-    // Chairs around table
-    ctx.strokeRect(tx - 4, ty + (tH * 0.15), 4, tH * 0.25);
-    ctx.strokeRect(tx - 4, ty + (tH * 0.6), 4, tH * 0.25);
-    ctx.strokeRect(tx + tW, ty + (tH * 0.15), 4, tH * 0.25);
-    ctx.strokeRect(tx + tW, ty + (tH * 0.6), 4, tH * 0.25);
+    // Chairs with backrest support lines
+    const chairsX = [tx - 5, tx + tW];
+    chairsX.forEach((cx) => {
+      ctx.strokeRect(cx, ty + (tH * 0.15), 5, tH * 0.22);
+      ctx.strokeRect(cx, ty + (tH * 0.62), 5, tH * 0.22);
+    });
   };
 
   const drawKitchenBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#62899c'; 
     ctx.lineWidth = 0.8;
 
-    // Counter slabs drawing
     const slabW = 10;
-    ctx.strokeRect(rx, ry, slabW, rh);
-    ctx.strokeRect(rx, ry, rw, slabW);
+    ctx.strokeRect(rx, ry, slabW, rh); // vertical slab
+    ctx.strokeRect(rx, ry, rw, slabW); // horizontal slab
 
-    // Stove (2 burners circles)
-    const stX = rx + (rw * 0.4);
-    const stY = ry + 3;
-    ctx.strokeRect(stX, stY, 20, 5);
+    // 2-burners double gas stove
+    const stX = rx + (rw * 0.42);
+    const stY = ry + 2.5;
+    ctx.strokeRect(stX, stY, 22, 5.5);
     ctx.beginPath();
-    ctx.arc(stX + 5, stY + 2.5, 1.5, 0, Math.PI * 2);
-    ctx.arc(stX + 15, stY + 2.5, 1.5, 0, Math.PI * 2);
+    ctx.arc(stX + 5.5, stY + 2.75, 1.8, 0, Math.PI * 2);
+    ctx.arc(stX + 16.5, stY + 2.75, 1.8, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Sink box
-    ctx.strokeRect(rx + 2, ry + (rh * 0.5), 6, 12);
+    // Wash sink container
+    ctx.strokeRect(rx + 2, ry + (rh * 0.48), 6.5, 13);
   };
 
   const drawGardenBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#22c55e'; // Green foliage
+    ctx.strokeStyle = '#22c55e'; // Grass green color
     ctx.lineWidth = 0.8;
 
-    // Draw leaf patterns or grass star hashes matching blueprint garden hatchings
-    const gap = 14;
-    for (let gx = rx + 8; gx < rx + rw - 8; gx += gap) {
-      for (let gy = ry + 8; gy < ry + rh - 8; gy += gap) {
+    // Draw overlapping organic bubble bush clusters (similar to CAD patterns)
+    const gap = 16;
+    for (let gx = rx + 10; gx < rx + rw - 10; gx += gap) {
+      for (let gy = ry + 10; gy < ry + rh - 10; gy += gap) {
         ctx.beginPath();
-        ctx.moveTo(gx - 3, gy); ctx.lineTo(gx + 3, gy);
-        ctx.moveTo(gx, gy - 3); ctx.lineTo(gx, gy + 3);
-        ctx.moveTo(gx - 2, gy - 2); ctx.lineTo(gx + 2, gy + 2);
-        ctx.moveTo(gx - 2, gy + 2); ctx.lineTo(gx + 2, gy - 2);
+        ctx.arc(gx, gy, 4, 0, Math.PI * 2);
+        ctx.arc(gx + 3, gy + 1, 3.5, 0, Math.PI * 2);
+        ctx.arc(gx - 2, gy + 2, 3, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -728,16 +740,17 @@ export const VasthuToolsView: React.FC = () => {
   const drawPoojaBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#fb8500';
     ctx.lineWidth = 0.8;
-    // Small pedestal / square altar
-    const pW = rw * 0.5;
-    const pH = rh * 0.5;
+    const pW = rw * 0.52;
+    const pH = rh * 0.52;
     const px = rx + (rw - pW) / 2;
     const py = ry + (rh - pH) / 2;
-    ctx.strokeRect(px, py, pW, pH);
     
-    // Altar lamp flame icon circle
+    ctx.strokeRect(px, py, pW, pH);
+    ctx.strokeRect(px - 1.5, py - 1.5, pW + 3, pH + 3); // Altar step
+    
+    // flame lamp center
     ctx.beginPath();
-    ctx.arc(px + (pW / 2), py + (pH / 2), 2, 0, Math.PI * 2);
+    ctx.arc(px + (pW / 2), py + (pH / 2), 2.5, 0, Math.PI * 2);
     ctx.stroke();
   };
 
@@ -749,8 +762,12 @@ export const VasthuToolsView: React.FC = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Save and upscale context 3x for high-DPI rendering
+    ctx.save();
+    ctx.scale(3, 3); // Upscaling factor for super-sharp graphics!
+
     const pad = 35;
-    const cw = canvas.width - (pad * 2);
+    const cw = 500 - (pad * 2); // coordinates calculated relative to 500x660 space
     const ch = 460 - (pad * 2);
 
     const scaleX = cw / plotWidth;
@@ -766,36 +783,37 @@ export const VasthuToolsView: React.FC = () => {
 
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-    // --- 1. DRAW BLACK CAD INTERFACE CANVAS & DOTTED GRID GRID ---
+    // Draw Black CAD background
     ctx.fillStyle = '#000000'; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, 500, 660);
 
-    ctx.strokeStyle = '#1a1a1a'; 
+    // Dotted CAD Grid lines
+    ctx.strokeStyle = '#111111'; 
     ctx.lineWidth = 0.5;
-    for (let i = 0; i < canvas.width; i += 20) {
+    for (let i = 0; i < 500; i += 20) {
       ctx.beginPath();
-      ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+      ctx.moveTo(i, 0); ctx.lineTo(i, 660);
       ctx.stroke();
     }
-    for (let j = 0; j < canvas.height; j += 20) {
+    for (let j = 0; j < 660; j += 20) {
       ctx.beginPath();
-      ctx.moveTo(0, j); ctx.lineTo(canvas.width, j);
+      ctx.moveTo(0, j); ctx.lineTo(500, j);
       ctx.stroke();
     }
 
-    // Outer boundary frame
+    // Outer framing double border (white)
     ctx.strokeStyle = '#ffffff'; 
-    ctx.lineWidth = 2;
-    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(5, 5, 490, 650);
     ctx.lineWidth = 0.5;
-    ctx.strokeRect(9, 9, canvas.width - 18, canvas.height - 18);
+    ctx.strokeRect(8, 8, 484, 644);
 
-    // Plot Boundaries (Cyan Boundary)
+    // Plot boundaries (neon cyan outline)
     ctx.strokeStyle = '#00ffff'; 
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
 
-    // 2. Draw room partitions
+    // Draw partitions & detailed furniture shapes
     rooms.forEach((room) => {
       const rx = transX(room.x);
       const ry = transY(room.y);
@@ -810,7 +828,7 @@ export const VasthuToolsView: React.FC = () => {
       ctx.lineWidth = 1.5;
       ctx.strokeRect(rx, ry, rw, rh);
 
-      // --- DRAW FURNITURE COMPONENTS ACCORDING TO ROOM TYPE ---
+      // Furniture Block components
       if (room.type === 'bedroom' || room.type === 'master') {
         drawBedBlock(ctx, rx, ry, rw, rh);
       } else if (room.type === 'parking') {
@@ -827,7 +845,7 @@ export const VasthuToolsView: React.FC = () => {
         drawPoojaBlock(ctx, rx, ry, rw, rh);
       }
 
-      // Draw attached toilets
+      // Toilets
       if (room.attachedToilet) {
         const tx = transX(room.attachedToilet.x);
         const ty = transY(room.attachedToilet.y);
@@ -846,7 +864,7 @@ export const VasthuToolsView: React.FC = () => {
         ctx.fillText(room.attachedToilet.name, tx + (tw / 2), ty + (th / 2));
       }
 
-      // Draw staircase steps
+      // Staircase steps
       if (room.type === 'staircase') {
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 0.8;
@@ -860,7 +878,7 @@ export const VasthuToolsView: React.FC = () => {
         ctx.fillText('UP ➔', rx + (rw / 2), ry + (rh / 2));
       }
 
-      // Room labels & Dimensions
+      // Room labels & size tags
       ctx.fillStyle = '#ffffff'; 
       ctx.font = 'bold 9.5px monospace';
       ctx.textAlign = 'center';
@@ -873,7 +891,7 @@ export const VasthuToolsView: React.FC = () => {
       ctx.font = 'normal 8.5px monospace';
       ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 12);
 
-      // Draw Doors
+      // Doors
       if (room.doorWall && room.doorPos !== undefined) {
         ctx.strokeStyle = '#ffff00'; 
         ctx.lineWidth = 1.5;
@@ -911,7 +929,7 @@ export const VasthuToolsView: React.FC = () => {
         ctx.stroke();
       }
 
-      // Draw Windows
+      // Windows
       if (room.windowWalls) {
         ctx.strokeStyle = '#00ffff'; 
         ctx.lineWidth = 2.5;
@@ -971,8 +989,8 @@ export const VasthuToolsView: React.FC = () => {
     const tY = 490;
     ctx.strokeStyle = '#ffffff'; 
     ctx.lineWidth = 2;
-    ctx.strokeRect(12, tY, canvas.width - 24, 150);
-    ctx.strokeRect(14, tY + 2, canvas.width - 28, 146);
+    ctx.strokeRect(12, tY, 476, 150);
+    ctx.strokeRect(14, tY + 2, 472, 146);
 
     // Draw Column Dividers
     ctx.lineWidth = 0.8;
@@ -1071,6 +1089,9 @@ export const VasthuToolsView: React.FC = () => {
     ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = '#00ffff';
     ctx.fillText('CHIEF ENG.', 415, tY + 95);
+
+    // Restore context
+    ctx.restore();
   };
 
   useEffect(() => {
@@ -1109,6 +1130,7 @@ export const VasthuToolsView: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Use raw high-res canvas image data to prevent blurriness
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1383,7 +1405,7 @@ EOF`;
                 </h3>
               </div>
 
-              <p className="text-xs text-slate-650 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100/50">
+              <p className="text-xs text-slate-655 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100/50">
                 {VASTHU_RULES[selectedDirection].advice}
               </p>
 
@@ -1504,7 +1526,7 @@ EOF`;
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     Place room in sector: <span className="text-[#fb8500] font-extrabold">{activeCell}</span>
                   </h4>
-                  <button onClick={() => setActiveCell(null)} className="text-xs text-slate-400 hover:text-slate-650">Close</button>
+                  <button onClick={() => setActiveCell(null)} className="text-xs text-slate-400 hover:text-slate-655">Close</button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -1534,7 +1556,7 @@ EOF`;
             <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800/40">
               <button
                 onClick={handleResetPlanner}
-                className="flex items-center gap-1.5 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="flex items-center gap-1.5 border border-slate-200 dark:border-slate-800 text-slate-655 dark:text-slate-400 hover:bg-slate-50 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Reset Layout Grid
@@ -1713,7 +1735,7 @@ EOF`;
                       className={`flex-1 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         bedroomCount === num
                           ? 'bg-[#fb8500] border-[#fb8500] text-white'
-                          : 'border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-850 dark:text-slate-300'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-855 dark:text-slate-300'
                       }`}
                     >
                       {num} BHK Layout
@@ -1864,12 +1886,13 @@ EOF`;
               </div>
             </div>
 
-            {/* Canvas Wrapper */}
+            {/* Canvas Wrapper (High resolution upscaled canvas) */}
             <div className="border border-slate-800 bg-[#000000] rounded-2xl p-2.5 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
               <canvas
                 ref={canvasRef}
-                width={500}
-                height={660} 
+                width={1500} // 3x of 500 for High-DPI sharp rendering density
+                height={1980} // 3x of 660
+                style={{ width: '500px', height: '660px' }} // CSS locks browser display aspect ratio
                 className="max-w-full block rounded-xl border border-slate-900"
               />
             </div>
