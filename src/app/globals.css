@@ -1,22 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f1f5f7; /* Soft light sky background */
+  --foreground: #023047; /* Deep Space Blue Text */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+@theme {
+  /* Map user's Princeton Orange (#fb8500) as primary brand color */
+  --color-blue-50: #fff3e0;
+  --color-blue-100: #ffe0b2;
+  --color-blue-200: #ffb74d;
+  --color-blue-300: #ffa726;
+  --color-blue-400: #fb8500; /* Princeton Orange */
+  --color-blue-500: #fb8500; /* Princeton Orange */
+  --color-blue-600: #fb8500; /* Princeton Orange */
+  --color-blue-700: #e07500; /* Darker Princeton Orange for hover */
+  --color-blue-800: #cc6a00;
+  --color-blue-900: #219ebc; /* Blue Green */
+  --color-blue-950: #023047; /* Deep Space Blue */
+
+  /* Map user's Amber Flame (#ffb703) as secondary brand color */
+  --color-amber-500: #ffb703; /* Amber Flame */
+  --color-amber-600: #e5a402;
+  --color-amber-700: #cc9202;
+
+  /* Retheme slate colors to neutral sky-coordinates of this brand */
+  --color-slate-50: #f1f5f7;  /* Soft light sky background */
+  --color-slate-100: #e1ebf0; /* Soft sky card fill */
+  --color-slate-150: #d1e0e8;
+  --color-slate-200: #c2d6e0; /* Sky blue borders */
+  --color-slate-300: #a2c2d1;
+  --color-slate-400: #62899c; /* Secondary slate text */
+  --color-slate-500: #219ebc; /* Blue Green */
+  --color-slate-650: #197c94;
+  --color-slate-700: #023047; /* Deep Space Blue */
+  --color-slate-800: #023047; /* Deep Space Blue */
+  --color-slate-900: #011d2c; /* Darkest Navy cards */
+  --color-slate-950: #000c14; /* Darkest Navy body bg */
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
