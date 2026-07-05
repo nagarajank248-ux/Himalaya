@@ -13,6 +13,7 @@ import { AnalyticsView } from '../components/AnalyticsView';
 import { AdminPanelView } from '../components/AdminPanelView';
 import { SettingsView } from '../components/SettingsView';
 import { QuotationView } from '../components/QuotationView';
+import { VasthuToolsView } from '../components/VasthuToolsView';
 import { LeadModal } from '../components/LeadModal';
 import { NotificationToast } from '../components/NotificationToast';
 import { Menu, Loader2, Users, Bell } from 'lucide-react';
@@ -131,6 +132,8 @@ export default function Home() {
         return <OCRExtractionView onSaveAsLead={handleAddOCRAsLead} />;
       case 'quotations':
         return <QuotationView />;
+      case 'vasthu-tools':
+        return <VasthuToolsView />;
       case 'analytics':
         return <AnalyticsView />;
       case 'admin':

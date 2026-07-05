@@ -15,7 +15,8 @@ import {
   UserX,
   Menu,
   X,
-  FileText
+  FileText,
+  Compass
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setTab, isOpen, se
     { id: 'leads', label: 'Lead Management', icon: Users, roles: ['admin', 'user'] },
     { id: 'ocr', label: 'OCR Extraction', icon: ScanQrCode, roles: ['admin', 'user'] },
     { id: 'quotations', label: 'Quotation Builder', icon: FileText, roles: ['admin', 'user'] },
+    { id: 'vasthu-tools', label: 'Vasthu Tools', icon: Compass, roles: ['admin', 'user'] },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'user'] },
     { id: 'admin', label: 'Admin Panel', icon: ShieldAlert, roles: ['admin'] },
     { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin', 'user'] },
