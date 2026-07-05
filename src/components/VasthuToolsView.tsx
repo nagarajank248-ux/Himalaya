@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
+import { jsPDF } from 'jspdf';
 import { 
   Compass, 
   Grid3X3, 
@@ -16,7 +17,9 @@ import {
   Layout,
   Download,
   Building2,
-  FileText
+  FileText,
+  Sparkles,
+  Maximize
 } from 'lucide-react';
 
 type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
@@ -123,7 +126,6 @@ export const VasthuToolsView: React.FC = () => {
   const [manualAngle, setManualAngle] = useState(0);
   const [selectedDirection, setSelectedDirection] = useState<Direction>('N');
 
-  // Rotate handler
   const angle = isTracking ? heading : manualAngle;
 
   useEffect(() => {
@@ -211,7 +213,7 @@ export const VasthuToolsView: React.FC = () => {
           details.push({ direction: dir, room, status: 'acceptable', points: 0, note: 'Brahmasthan (Center) is open. Acceptable.' });
         } else {
           score -= 20;
-          details.push({ direction: dir, room, status: 'avoid', points: -20, note: 'Brahmasthan (Center) should remain open. Avoid heavy rooms.' });
+          details.push({ direction: dir, room, status: 'avoid', points: -20, note: 'Brahmasthan (Center) should remain open. Avoid toilets/kitchens.' });
         }
         return;
       }
@@ -247,7 +249,12 @@ export const VasthuToolsView: React.FC = () => {
   const [includeStairs, setIncludeStairs] = useState(true);
   const [includeParking, setIncludeParking] = useState(true);
 
-  // Blueprint Metadata inputs matching Sample 2pdf.pdf
+  // Requirements text parser box
+  const [rawTextRequirements, setRawTextRequirements] = useState(
+    `Plot Size: 23 × 39\nFacing: West\nFollow Vastu principles.\nInclude:\n- 1 Living Hall\n- 1 Master Bedroom with Attached Bathroom\n- 2 Bedrooms with Attached Bathrooms\n- 1 Kitchen\n- 1 Dining Area\n- 1 Pooja Room\n- Staircase\n- Car Parking`
+  );
+
+  // Blueprint Metadata inputs
   const [clientName, setClientName] = useState('AMMU');
   const [constructionType, setConstructionType] = useState('RESIDENTIAL');
   const [drawingTitle, setDrawingTitle] = useState('GROUND FLOOR PLAN');
@@ -256,10 +263,43 @@ export const VasthuToolsView: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // AI Requirements parser
+  const handleParseRequirements = () => {
+    const text = rawTextRequirements.toLowerCase();
+
+    // 1. Parse Plot size: e.g. "23 x 39" or "23 × 39" or "23*39"
+    const sizeRegex = /(\d+)\s*[\*xX×\s]+\s*(\d+)/;
+    const sizeMatch = rawTextRequirements.match(sizeRegex);
+    if (sizeMatch) {
+      setPlotWidth(Math.max(10, parseInt(sizeMatch[1])));
+      setPlotLength(Math.max(10, parseInt(sizeMatch[2])));
+    }
+
+    // 2. Parse Facing: e.g. "facing: west"
+    if (text.includes('west')) setPlotFacing('West');
+    else if (text.includes('east')) setPlotFacing('East');
+    else if (text.includes('north')) setPlotFacing('North');
+    else if (text.includes('south')) setPlotFacing('South');
+
+    // 3. Parse Bedroom count: e.g. "2 bedrooms" or "3 bedrooms"
+    const bedRegex = /(\d+)\s*(bhk|bedroom)/;
+    const bedMatch = text.match(bedRegex);
+    if (bedMatch) {
+      const count = parseInt(bedMatch[1]);
+      if (count === 2 || count === 3) setBedroomCount(count as 2 | 3);
+    }
+
+    // 4. Parse inclusion flags
+    setIncludePooja(text.includes('pooja') || text.includes('poojai') || text.includes('altar'));
+    setIncludeStairs(text.includes('stair') || text.includes('staircase') || text.includes('steps'));
+    setIncludeParking(text.includes('park') || text.includes('parking') || text.includes('car'));
+
+    addNotification('success', 'Vastu requirements parsed successfully. Blueprint updated!');
+  };
+
   const generateRoomsList = (W: number, L: number, facing: 'East' | 'West' | 'North' | 'South', bedCount: number): RoomPlan[] => {
     const list: RoomPlan[] = [];
     
-    // Grid layout proportions
     const leftW = Math.round(W * 0.52);
     const rightW = W - leftW;
     
@@ -268,7 +308,10 @@ export const VasthuToolsView: React.FC = () => {
     const frontH = L - rearH - midH;
 
     if (facing === 'West') {
-      // Agneya Kitchen (SE - Top Right), Ishanya Pooja (NE - Top Left)
+      // West road is at bottom (y = L). East is rear (y = 0).
+      // Left side is North (x = 0). Right side is South (x = W).
+
+      // 1. Kitchen (SE - Top Right)
       list.push({
         name: 'KITCHEN',
         x: leftW,
@@ -409,7 +452,6 @@ export const VasthuToolsView: React.FC = () => {
       }
 
     } else {
-      // Fallback Vastu plan coordinates
       list.push({
         name: 'KITCHEN',
         x: leftW,
@@ -495,19 +537,60 @@ export const VasthuToolsView: React.FC = () => {
     return list;
   };
 
+  // Helper to draw CAD dimension line with double arrows
+  const drawDimensionLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, text: string) => {
+    ctx.strokeStyle = '#fb8500'; // CAD Orange Dimension lines
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // Arrows
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const arrowLen = 5;
+
+    ctx.fillStyle = '#fb8500';
+    // Start arrow
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + arrowLen * Math.cos(angle + Math.PI/6), y1 + arrowLen * Math.sin(angle + Math.PI/6));
+    ctx.lineTo(x1 + arrowLen * Math.cos(angle - Math.PI/6), y1 + arrowLen * Math.sin(angle - Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+
+    // End arrow
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - arrowLen * Math.cos(angle + Math.PI/6), y2 - arrowLen * Math.sin(angle + Math.PI/6));
+    ctx.lineTo(x2 - arrowLen * Math.cos(angle - Math.PI/6), y2 - arrowLen * Math.sin(angle - Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+
+    // Text label
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    ctx.save();
+    ctx.translate(midX, midY);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(text, 0, -2);
+    ctx.restore();
+  };
+
   const drawFloorPlan = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Reset dimensions
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Padding settings
     const pad = 35;
     const cw = canvas.width - (pad * 2);
-    // Draw layout area within top 460px height, leave rest for blueprint title table
     const ch = 460 - (pad * 2);
 
     const scaleX = cw / plotWidth;
@@ -523,21 +606,33 @@ export const VasthuToolsView: React.FC = () => {
 
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-    // 1. Draw outer boundary / Background
-    ctx.fillStyle = '#fffdfa'; // White blueprint sheet background
+    // --- 1. DRAW BLACK CAD INTERFACE CANVAS & DOTTED GRID GRID ---
+    ctx.fillStyle = '#000000'; // CAD Black Background
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#023047'; // Dark space blue main grid borders
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#1a1a1a'; // Dark Grid Lines
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < canvas.width; i += 20) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+      ctx.stroke();
+    }
+    for (let j = 0; j < canvas.height; j += 20) {
+      ctx.beginPath();
+      ctx.moveTo(0, j); ctx.lineTo(canvas.width, j);
+      ctx.stroke();
+    }
+
+    // Outer double-border (White frame for sheet)
+    ctx.strokeStyle = '#ffffff'; 
+    ctx.lineWidth = 2;
     ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 0.5;
     ctx.strokeRect(9, 9, canvas.width - 18, canvas.height - 18);
 
-    // Fill plot background lightly
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
-    ctx.strokeStyle = '#023047';
-    ctx.lineWidth = 2.5;
+    // Plot Boundaries (AutoCAD Cyan Boundary)
+    ctx.strokeStyle = '#00ffff'; 
+    ctx.lineWidth = 3;
     ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
 
     // 2. Draw room partitions
@@ -547,34 +642,29 @@ export const VasthuToolsView: React.FC = () => {
       const rw = scaleFeet(room.w);
       const rh = scaleFeet(room.h);
 
-      if (room.type === 'kitchen') ctx.fillStyle = '#fffbeb'; 
-      else if (room.type === 'pooja') ctx.fillStyle = '#fff7ed'; 
-      else if (room.type === 'master') ctx.fillStyle = '#f0fdf4'; 
-      else if (room.type === 'living') ctx.fillStyle = '#f0f9ff'; 
-      else if (room.type === 'parking') ctx.fillStyle = '#f9fafb'; 
-      else if (room.type === 'staircase') ctx.fillStyle = '#fafaf9';
-      else ctx.fillStyle = '#ffffff'; 
-
+      // AutoCAD Hatching Background (Transparent fills)
+      ctx.fillStyle = 'rgba(0, 255, 255, 0.04)'; // Subtle cyan transparent hatch
       ctx.fillRect(rx, ry, rw, rh);
 
-      // Draw Room Walls
-      ctx.strokeStyle = '#219ebc'; // Teal blue walls
-      ctx.lineWidth = 2;
+      // Draw Room Walls (AutoCAD Green Vector Lines)
+      ctx.strokeStyle = '#00ff00'; 
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(rx, ry, rw, rh);
 
-      // Draw attached toilets
+      // Draw attached toilets (AutoCAD Magenta Vector Lines)
       if (room.attachedToilet) {
         const tx = transX(room.attachedToilet.x);
         const ty = transY(room.attachedToilet.y);
         const tw = scaleFeet(room.attachedToilet.w);
         const th = scaleFeet(room.attachedToilet.h);
 
-        ctx.fillStyle = '#f5f3ff'; 
+        ctx.fillStyle = 'rgba(255, 0, 255, 0.05)'; 
         ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeStyle = '#ff00ff';
         ctx.strokeRect(tx, ty, tw, th);
 
-        ctx.fillStyle = '#023047';
-        ctx.font = 'bold 8px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(room.attachedToilet.name, tx + (tw / 2), ty + (th / 2));
@@ -582,35 +672,35 @@ export const VasthuToolsView: React.FC = () => {
 
       // Draw staircase steps
       if (room.type === 'staircase') {
-        ctx.strokeStyle = '#62899c';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 0.8;
         const stepsCount = 10;
         const stepW = rw / stepsCount;
         for (let i = 0; i < stepsCount; i++) {
           ctx.strokeRect(rx + (i * stepW), ry, stepW, rh);
         }
         ctx.fillStyle = '#fb8500';
-        ctx.font = 'bold 8px sans-serif';
+        ctx.font = 'bold 7px monospace';
         ctx.fillText('UP ➔', rx + (rw / 2), ry + (rh / 2));
       }
 
       // Room labels & Dimensions
-      ctx.fillStyle = '#023047'; 
-      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#ffffff'; 
+      ctx.font = 'bold 9.5px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
       const labelY = room.attachedToilet ? ry + (rh * 0.35) : ry + (rh / 2);
       ctx.fillText(room.name, rx + (rw / 2), labelY);
 
-      ctx.fillStyle = '#798390'; 
-      ctx.font = 'normal 9px sans-serif';
-      ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 13);
+      ctx.fillStyle = '#00ffff'; // Neon cyan dimensions
+      ctx.font = 'normal 8.5px monospace';
+      ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 12);
 
-      // Draw Doors swing arc
+      // Draw Doors (AutoCAD Yellow vectors)
       if (room.doorWall && room.doorPos !== undefined) {
-        ctx.strokeStyle = '#fb8500'; 
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffff00'; 
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         
         const doorSize = scaleFeet(2.8); 
@@ -645,10 +735,10 @@ export const VasthuToolsView: React.FC = () => {
         ctx.stroke();
       }
 
-      // Draw Windows indicator
+      // Draw Windows indicator (Cyan lines)
       if (room.windowWalls) {
-        ctx.strokeStyle = '#8ecae6'; 
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#00ffff'; 
+        ctx.lineWidth = 2.5;
         
         room.windowWalls.forEach((wWall) => {
           ctx.beginPath();
@@ -671,23 +761,14 @@ export const VasthuToolsView: React.FC = () => {
       }
     });
 
-    // 3. Draw Plot dimensions
-    ctx.fillStyle = '#023047';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    
-    ctx.fillText(`${plotWidth}'0"`, offsetX + (scaleFeet(plotWidth) / 2), offsetY - 10);
-    
-    ctx.save();
-    ctx.translate(offsetX - 12, offsetY + (scaleFeet(plotLength) / 2));
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(`${plotLength}'0"`, 0, 0);
-    ctx.restore();
+    // 3. Draw Plot dimensions arrowlines
+    drawDimensionLine(ctx, offsetX, offsetY - 18, offsetX + scaleFeet(plotWidth), offsetY - 18, `${plotWidth}'0"`);
+    drawDimensionLine(ctx, offsetX - 18, offsetY + scaleFeet(plotLength), offsetX - 18, offsetY, `${plotLength}'0"`);
 
     // 4. North Direction Arrow Indicator (Top-Left area)
     const navX = 40;
     const navY = 40;
-    ctx.strokeStyle = '#62899c';
+    ctx.strokeStyle = '#00ffff';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(navX, navY, 15, 0, Math.PI * 2);
@@ -701,25 +782,24 @@ export const VasthuToolsView: React.FC = () => {
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#023047';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillText('N', navX, navY - 16);
 
     // Label road facing direction
-    ctx.fillStyle = '#fb8500';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.fillText(`⚡ ${plotFacing.toUpperCase()} FACING ROAD ACCESS ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
+    ctx.fillStyle = '#ffff00';
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillText(`⚡ ROAD ACCESS: ${plotFacing.toUpperCase()} FACING ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
 
     // --- 5. DRAW BLUEPRINT TITLE BLOCK TABLE (bottom from y = 490 to y = 645) ---
     const tY = 490;
-    ctx.strokeStyle = '#023047'; // Blueprint deep border lines
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#ffffff'; // White sheet border lines
+    ctx.lineWidth = 2;
     ctx.strokeRect(12, tY, canvas.width - 24, 150);
     ctx.strokeRect(14, tY + 2, canvas.width - 28, 146);
 
     // Draw Column Dividers
-    // Col 1 (x=15 to 110), Col 2 (x=110 to 220), Col 3 (x=220 to 310), Col 4 (x=310 to 410), Col 5 (x=410 to 485)
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(110, tY + 2); ctx.lineTo(110, tY + 148);
     ctx.moveTo(220, tY + 2); ctx.lineTo(220, tY + 148);
@@ -728,25 +808,24 @@ export const VasthuToolsView: React.FC = () => {
     ctx.stroke();
 
     // Box 1 details (CONSTRUCTION & CLIENT)
-    ctx.fillStyle = '#023047';
+    ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillText('CONSTRUCTION:', 18, tY + 15);
-    ctx.font = 'normal 8.5px sans-serif';
+    ctx.font = 'normal 8px monospace';
     ctx.fillText(constructionType.toUpperCase(), 18, tY + 30);
 
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillText('CLIENT:', 18, tY + 80);
-    ctx.font = 'normal 8.5px sans-serif';
+    ctx.font = 'normal 8px monospace';
     ctx.fillText(clientName.toUpperCase(), 18, tY + 95);
 
     // Box 2 details (JOINERIES DETAILS Table)
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 8.5px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('JOINERIES DETAILS', 165, tY + 15);
     
-    // Draw table rows inside Column 2
-    ctx.font = 'normal 8px sans-serif';
+    ctx.font = 'normal 7.5px monospace';
     ctx.textAlign = 'left';
     const jData = [
       'MD   Main Door     3\'6" x 7\'0"',
@@ -762,23 +841,22 @@ export const VasthuToolsView: React.FC = () => {
 
     // Box 3 details (TOTAL AREA & COMPASS)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 9px sans-serif';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillText('TOTAL AREA', 265, tY + 15);
-    ctx.font = 'normal 8px sans-serif';
+    ctx.font = 'normal 8px monospace';
     ctx.fillText('Buildup Area:', 265, tY + 35);
-    ctx.font = 'bold 9px sans-serif';
-    ctx.fillStyle = '#fb8500';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#00ffff';
     ctx.fillText(`${(plotWidth * plotLength * 0.85).toFixed(2)} Sqft`, 265, tY + 50);
 
     // Compass indicator inside box 3
     const cX = 265;
     const cY = tY + 100;
-    ctx.strokeStyle = '#219ebc';
+    ctx.strokeStyle = '#00ffff';
     ctx.beginPath();
     ctx.arc(cX, cY, 20, 0, Math.PI * 2);
     ctx.stroke();
-    // North star
-    ctx.fillStyle = '#023047';
+    ctx.fillStyle = '#ffffff';
     ctx.fillText('N', cX, cY - 24);
     ctx.fillStyle = '#fb8500';
     ctx.beginPath();
@@ -789,33 +867,33 @@ export const VasthuToolsView: React.FC = () => {
     ctx.fill();
 
     // Box 4 details (DRAWING TITLE & DWG INFO)
-    ctx.fillStyle = '#023047';
+    ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 8.5px sans-serif';
+    ctx.font = 'bold 8px monospace';
     ctx.fillText('DRAWING TITLE:', 315, tY + 15);
-    ctx.font = 'bold 9px sans-serif';
-    ctx.fillStyle = '#fb8500';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#00ff00';
     ctx.fillText(drawingTitle.toUpperCase(), 315, tY + 30);
 
-    ctx.fillStyle = '#023047';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px monospace';
     const cDate = new Date().toLocaleDateString();
     ctx.fillText(`DATE:  ${cDate}`, 315, tY + 70);
     ctx.fillText(`SCALE: ${scaleLabel}`, 315, tY + 90);
     ctx.fillText(`DWG NO: ${dwgNo.toUpperCase()}`, 315, tY + 110);
 
     // Box 5 details (SIGNATURES BLOCK)
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = 'bold 8px monospace';
     ctx.fillText('CHECKED BY:', 415, tY + 15);
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.fillStyle = '#62899c';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#00ffff';
     ctx.fillText('ENGINEER', 415, tY + 30);
 
-    ctx.fillStyle = '#023047';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px monospace';
     ctx.fillText('APPROVED BY:', 415, tY + 80);
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.fillStyle = '#62899c';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#00ffff';
     ctx.fillText('CHIEF ENG.', 415, tY + 95);
   };
 
@@ -839,16 +917,149 @@ export const VasthuToolsView: React.FC = () => {
     scaleLabel
   ]);
 
-  const handleDownloadPlan = () => {
+  // --- EXPORT 1: PNG IMAGE ---
+  const handleExportPNG = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const url = canvas.toDataURL('image/jpeg');
+      const url = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Himalaya_Blueprint_${clientName}_${plotWidth}x${plotLength}.jpg`;
+      a.download = `Himalaya_CAD_Plan_${clientName}_${plotWidth}x${plotLength}.png`;
       a.click();
-      addNotification('success', 'Blueprint image exported successfully.');
+      addNotification('success', 'Blueprint image (PNG) exported successfully.');
     }
+  };
+
+  // --- EXPORT 2: PDF DOCUMENT ---
+  const handleExportPDF = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: [540, 700]
+    });
+
+    // Add visual CAD drawing sheet
+    pdf.setFillColor(30, 30, 30);
+    pdf.rect(0, 0, 540, 700, 'F');
+    pdf.addImage(imgData, 'JPEG', 20, 20, 500, 660);
+
+    pdf.save(`Himalaya_CAD_Blueprint_${clientName}_${plotWidth}x${plotLength}.pdf`);
+    addNotification('success', 'Blueprint document (PDF) exported successfully.');
+  };
+
+  // --- EXPORT 3: DXF CAD EXCHANGE FILE ---
+  const handleExportDXF = () => {
+    const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
+    
+    let dxf = `0
+SECTION
+2
+HEADER
+9
+$ACADVER
+1
+AC1015
+0
+ENDSEC
+0
+SECTION
+2
+TABLES
+0
+ENDSEC
+0
+SECTION
+2
+ENTITIES
+`;
+
+    // Draw Line helper
+    const makeLine = (x1: number, y1: number, x2: number, y2: number, layer: string = 'WALLS') => {
+      return `0
+LINE
+8
+${layer}
+10
+${x1}
+20
+${y1}
+30
+0
+11
+${x2}
+21
+${y2}
+31
+0
+`;
+    };
+
+    // Draw Text helper
+    const makeText = (txt: string, x: number, y: number, h: number = 1.0, layer: string = 'ROOM_LABELS') => {
+      return `0
+TEXT
+8
+${layer}
+10
+${x}
+20
+${y}
+30
+0
+40
+${h}
+1
+${txt}
+`;
+    };
+
+    // 1. Boundary
+    dxf += makeLine(0, 0, plotWidth, 0, 'PLOT_BOUNDARY');
+    dxf += makeLine(plotWidth, 0, plotWidth, plotLength, 'PLOT_BOUNDARY');
+    dxf += makeLine(plotWidth, plotLength, 0, plotLength, 'PLOT_BOUNDARY');
+    dxf += makeLine(0, plotLength, 0, 0, 'PLOT_BOUNDARY');
+
+    // 2. Rooms walls and labels
+    rooms.forEach((room) => {
+      // Wall rectangles
+      dxf += makeLine(room.x, room.y, room.x + room.w, room.y, 'WALLS');
+      dxf += makeLine(room.x + room.w, room.y, room.x + room.w, room.y + room.h, 'WALLS');
+      dxf += makeLine(room.x + room.w, room.y + room.h, room.x, room.y + room.h, 'WALLS');
+      dxf += makeLine(room.x, room.y + room.h, room.x, room.y, 'WALLS');
+
+      // Room name text
+      dxf += makeText(room.name, room.x + (room.w / 2) - 3, room.y + (room.h / 2), 1.2, 'ROOM_NAMES');
+      dxf += makeText(`${room.w}' x ${room.h}'`, room.x + (room.w / 2) - 2.5, room.y + (room.h / 2) - 1.5, 0.8, 'ROOM_DIMENSIONS');
+
+      // Toilet walls
+      if (room.attachedToilet) {
+        const t = room.attachedToilet;
+        dxf += makeLine(t.x, t.y, t.x + t.w, t.y, 'TOILETS');
+        dxf += makeLine(t.x + t.w, t.y, t.x + t.w, t.y + t.h, 'TOILETS');
+        dxf += makeLine(t.x + t.w, t.y + t.h, t.x, t.y + t.h, 'TOILETS');
+        dxf += makeLine(t.x, t.y + t.h, t.x, t.y, 'TOILETS');
+        dxf += makeText(t.name, t.x + (t.w / 2) - 1.5, t.y + (t.h / 2), 0.7, 'TOILET_LABELS');
+      }
+    });
+
+    dxf += `0
+ENDSEC
+0
+EOF`;
+
+    // File download trigger
+    const blob = new Blob([dxf], { type: 'application/dxf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Himalaya_CAD_${clientName}_${plotWidth}x${plotLength}.dxf`;
+    a.click();
+
+    addNotification('success', 'CAD drawing (DXF) file downloaded successfully. Ready to open in AutoCAD!');
   };
 
   return (
@@ -897,7 +1108,7 @@ export const VasthuToolsView: React.FC = () => {
             }`}
           >
             <Layout className="h-4 w-4" />
-            2D Floor Plan Generator
+            2D Floor Plan CAD Suite
           </button>
         </div>
       </div>
@@ -1251,6 +1462,34 @@ export const VasthuToolsView: React.FC = () => {
           {/* Controls Input Form (Left) */}
           <div className="lg:col-span-4 space-y-4">
             
+            {/* AI Text Requirement Box */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-[#fb8500]" />
+                  AI Plan Parser
+                </h3>
+                <span className="text-[9px] text-[#fb8500] bg-[#fb8500]/10 px-2 py-0.5 rounded font-bold uppercase">Auto-Draft</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-normal">
+                Paste client raw requirements (e.g. plot size, facing, rooms) to auto-configure controls instantly.
+              </p>
+              <textarea
+                value={rawTextRequirements}
+                onChange={(e) => setRawTextRequirements(e.target.value)}
+                placeholder="Paste plan requirements here..."
+                rows={5}
+                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              />
+              <button
+                onClick={handleParseRequirements}
+                className="w-full bg-[#fb8500] hover:bg-[#e07500] text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-[#fb8500]/10 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="h-4 w-4" />
+                Parse & Generate Plan
+              </button>
+            </div>
+
             {/* Plot settings */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
               <div>
@@ -1258,13 +1497,12 @@ export const VasthuToolsView: React.FC = () => {
                   <Building2 className="h-4.5 w-4.5 text-[#fb8500]" />
                   Plot Parameters
                 </h3>
-                <p className="text-xs text-slate-500">Configure plot specifications and room requirements.</p>
               </div>
 
               {/* Plot Size */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Width (Feet)</label>
+                  <label className="text-[11px] font-bold text-slate-650 uppercase">Width (Feet)</label>
                   <input
                     type="number"
                     value={plotWidth}
@@ -1273,7 +1511,7 @@ export const VasthuToolsView: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Length (Feet)</label>
+                  <label className="text-[11px] font-bold text-slate-655 uppercase">Length (Feet)</label>
                   <input
                     type="number"
                     value={plotLength}
@@ -1285,7 +1523,7 @@ export const VasthuToolsView: React.FC = () => {
 
               {/* Road Facing */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Road Facing Direction</label>
+                <label className="text-[11px] font-bold text-slate-650 uppercase">Road Facing Direction</label>
                 <select
                   value={plotFacing}
                   onChange={(e: any) => setPlotFacing(e.target.value)}
@@ -1300,7 +1538,7 @@ export const VasthuToolsView: React.FC = () => {
 
               {/* Bedroom count */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Bedrooms</label>
+                <label className="text-[11px] font-bold text-slate-650 uppercase">Bedrooms</label>
                 <div className="flex gap-2">
                   {[2, 3].map((num) => (
                     <button
@@ -1320,7 +1558,7 @@ export const VasthuToolsView: React.FC = () => {
 
               {/* Checklist additions */}
               <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/40">
-                <label className="text-[11px] font-bold text-slate-600 uppercase block">Include Spaces</label>
+                <label className="text-[11px] font-bold text-slate-650 uppercase block">Include Spaces</label>
                 
                 <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
@@ -1363,7 +1601,6 @@ export const VasthuToolsView: React.FC = () => {
                   <FileText className="h-4.5 w-4.5 text-[#fb8500]" />
                   Blueprint Details
                 </h3>
-                <p className="text-xs text-slate-500">Edit text blocks displayed on the exported design sheet.</p>
               </div>
 
               <div className="space-y-3">
@@ -1421,30 +1658,53 @@ export const VasthuToolsView: React.FC = () => {
 
           {/* Plan Canvas drawing (Right) */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-6 shadow-xs flex flex-col items-center justify-between min-h-[500px]">
-            <div className="w-full flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-805/40 mb-4">
+            <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-slate-100 dark:border-slate-800/40 mb-4 gap-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">
-                  2D Structural Floor Plan Blueprint
+                <h3 className="text-sm font-extrabold text-slate-955 dark:text-white flex items-center gap-1.5">
+                  <Maximize className="h-4.5 w-4.5 text-[#fb8500]" />
+                  AutoCAD modeling View (2D CAD Grid)
                 </h3>
-                <p className="text-xs text-slate-500">Vastu compliant scale drawing for {plotWidth}ft × {plotLength}ft.</p>
+                <p className="text-xs text-slate-500">AutoCAD-style neon layout vectors with double-ruled blueprint title block.</p>
               </div>
 
-              <button
-                onClick={handleDownloadPlan}
-                className="flex items-center gap-1.5 bg-[#fb8500] hover:bg-[#e07500] text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer hover:translate-y-[-1px]"
-              >
-                <Download className="h-4 w-4" />
-                Export Plan JPG
-              </button>
+              {/* Multiple Exporters (CAD, PDF, IMG) */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-1 bg-[#fb8500] hover:bg-[#e07500] text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  title="Export to PDF"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  PDF
+                </button>
+                
+                <button
+                  onClick={handleExportDXF}
+                  className="flex items-center gap-1 bg-[#219ebc] hover:bg-[#1a7f98] text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  title="Download DXF file for AutoCAD"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  CAD (DXF)
+                </button>
+
+                <button
+                  onClick={handleExportPNG}
+                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  title="Save as PNG image"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  IMG
+                </button>
+              </div>
             </div>
 
             {/* Canvas Wrapper */}
-            <div className="border border-slate-200 dark:border-slate-800 bg-[#fffdfa] rounded-2xl p-3 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
+            <div className="border border-slate-800 bg-[#000000] rounded-2xl p-2.5 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
               <canvas
                 ref={canvasRef}
                 width={500}
-                height={660} // Expanded height to accommodate Blueprint Title Block Table
-                className="max-w-full block"
+                height={660} 
+                className="max-w-full block rounded-xl border border-slate-900"
               />
             </div>
 
@@ -1458,7 +1718,7 @@ export const VasthuToolsView: React.FC = () => {
                   <div key={i} className="flex gap-2.5 p-3 rounded-xl border border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 text-xs">
                     <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-800 dark:text-white">{room.name}</span>
+                      <span className="font-bold text-slate-850 dark:text-white">{room.name}</span>
                       <p className="text-[11px] text-slate-500 mt-0.5">{room.vastuNotes}</p>
                     </div>
                   </div>
