@@ -1148,106 +1148,86 @@ export const VasthuToolsView: React.FC = () => {
 
   const handleExportDXF = () => {
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
-    
-    let dxf = `0
-SECTION
-2
-HEADER
-9
-$ACADVER
-1
-AC1015
-0
-ENDSEC
-0
-SECTION
-2
-TABLES
-0
-ENDSEC
-0
-SECTION
-2
-ENTITIES
-`;
+    const dxfLines: string[] = [];
 
-    const makeLine = (x1: number, y1: number, x2: number, y2: number, layer: string = 'WALLS') => {
-      return `0
-LINE
-8
-${layer}
-10
-${x1}
-20
-${y1}
-30
-0
-11
-${x2}
-21
-${y2}
-31
-0
-`;
+    // Header section
+    dxfLines.push('0', 'SECTION', '2', 'ENTITIES');
+
+    // DXF line builder - strict coordinate and group layout with no trailing spaces
+    const pushLine = (x1: number, y1: number, x2: number, y2: number, layer: string) => {
+      dxfLines.push(
+        '0', 'LINE',
+        '8', layer,
+        '10', x1.toFixed(3),
+        '20', y1.toFixed(3),
+        '30', '0.0',
+        '11', x2.toFixed(3),
+        '21', y2.toFixed(3),
+        '31', '0.0'
+      );
     };
 
-    const makeText = (txt: string, x: number, y: number, h: number = 1.0, layer: string = 'ROOM_LABELS') => {
-      return `0
-TEXT
-8
-${layer}
-10
-${x}
-20
-${y}
-30
-0
-40
-${h}
-1
-${txt}
-`;
+    // DXF text builder
+    const pushText = (txt: string, x: number, y: number, h: number, layer: string) => {
+      dxfLines.push(
+        '0', 'TEXT',
+        '8', layer,
+        '10', x.toFixed(3),
+        '20', y.toFixed(3),
+        '30', '0.0',
+        '40', h.toFixed(3),
+        '1', txt
+      );
     };
 
-    // 1. Boundary
-    dxf += makeLine(0, 0, plotWidth, 0, 'PLOT_BOUNDARY');
-    dxf += makeLine(plotWidth, 0, plotWidth, plotLength, 'PLOT_BOUNDARY');
-    dxf += makeLine(plotWidth, plotLength, 0, plotLength, 'PLOT_BOUNDARY');
-    dxf += makeLine(0, plotLength, 0, 0, 'PLOT_BOUNDARY');
+    // 1. Plot boundary lines
+    pushLine(0, 0, plotWidth, 0, 'PLOT_BOUNDARY');
+    pushLine(plotWidth, 0, plotWidth, plotLength, 'PLOT_BOUNDARY');
+    pushLine(plotWidth, plotLength, 0, plotLength, 'PLOT_BOUNDARY');
+    pushLine(0, plotLength, 0, 0, 'PLOT_BOUNDARY');
 
-    // 2. Rooms walls and labels
+    // 2. Rooms walls and text layers
     rooms.forEach((room) => {
-      dxf += makeLine(room.x, room.y, room.x + room.w, room.y, 'WALLS');
-      dxf += makeLine(room.x + room.w, room.y, room.x + room.w, room.y + room.h, 'WALLS');
-      dxf += makeLine(room.x + room.w, room.y + room.h, room.x, room.y + room.h, 'WALLS');
-      dxf += makeLine(room.x, room.y + room.h, room.x, room.y, 'WALLS');
+      // Wall outer rectangular outline
+      pushLine(room.x, room.y, room.x + room.w, room.y, 'WALLS');
+      pushLine(room.x + room.w, room.y, room.x + room.w, room.y + room.h, 'WALLS');
+      pushLine(room.x + room.w, room.y + room.h, room.x, room.y + room.h, 'WALLS');
+      pushLine(room.x, room.y + room.h, room.x, room.y, 'WALLS');
 
-      dxf += makeText(room.name, room.x + (room.w / 2) - 3, room.y + (room.h / 2), 1.2, 'ROOM_NAMES');
-      dxf += makeText(`${room.w}' x ${room.h}'`, room.x + (room.w / 2) - 2.5, room.y + (room.h / 2) - 1.5, 0.8, 'ROOM_DIMENSIONS');
+      // Room name labels
+      pushText(room.name, room.x + (room.w / 2), room.y + (room.h / 2), 1.1, 'ROOM_NAMES');
+      pushText(`${room.w}' x ${room.h}'`, room.x + (room.w / 2), room.y + (room.h / 2) - 1.2, 0.75, 'ROOM_DIMENSIONS');
 
+      // Attached toilets
       if (room.attachedToilet) {
         const t = room.attachedToilet;
-        dxf += makeLine(t.x, t.y, t.x + t.w, t.y, 'TOILETS');
-        dxf += makeLine(t.x + t.w, t.y, t.x + t.w, t.y + t.h, 'TOILETS');
-        dxf += makeLine(t.x + t.w, t.y + t.h, t.x, t.y + t.h, 'TOILETS');
-        dxf += makeLine(t.x, t.y + t.h, t.x, t.y, 'TOILETS');
-        dxf += makeText(t.name, t.x + (t.w / 2) - 1.5, t.y + (t.h / 2), 0.7, 'TOILET_LABELS');
+        pushLine(t.x, t.y, t.x + t.w, t.y, 'TOILETS');
+        pushLine(t.x + t.w, t.y, t.x + t.w, t.y + t.h, 'TOILETS');
+        pushLine(t.x + t.w, t.y + t.h, t.x, t.y + t.h, 'TOILETS');
+        pushLine(t.x, t.y + t.h, t.x, t.y, 'TOILETS');
+        pushText(t.name, t.x + (t.w / 2), t.y + (t.h / 2), 0.65, 'TOILET_LABELS');
       }
     });
 
-    dxf += `0
-ENDSEC
-0
-EOF`;
+    // Close sections
+    dxfLines.push('0', 'ENDSEC', '0', 'EOF');
 
-    const blob = new Blob([dxf], { type: 'application/dxf' });
+    // Combine with clean UNIX newline delimiters
+    const dxfString = dxfLines.join('\n');
+
+    const blob = new Blob([dStringResolve(dxfString)], { type: 'application/dxf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `Himalaya_CAD_${clientName}_${plotWidth}x${plotLength}.dxf`;
     a.click();
 
-    addNotification('success', 'CAD drawing (DXF) file downloaded successfully.');
+    addNotification('success', 'CAD drawing (DXF) file downloaded successfully. Ready to open in AutoCAD!');
+  };
+
+  // Safe cleaner function to ensure absolutely clean string segments
+  const dStringResolve = (val: string) => {
+    return val.replace(/\r\n/g, '\n').trim();
   };
 
   return (
