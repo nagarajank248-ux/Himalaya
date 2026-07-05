@@ -254,7 +254,7 @@ export const VasthuToolsView: React.FC = () => {
     `Plot Size: 23 × 39\nFacing: West\nFollow Vastu principles.\nInclude:\n- 1 Living Hall\n- 1 Master Bedroom with Attached Bathroom\n- 2 Bedrooms with Attached Bathrooms\n- 1 Kitchen\n- 1 Dining Area\n- 1 Pooja Room\n- Staircase\n- Car Parking`
   );
 
-  // Blueprint Metadata inputs
+  // Blueprint Metadata inputs matching Sample 2pdf.pdf
   const [clientName, setClientName] = useState('AMMU');
   const [constructionType, setConstructionType] = useState('RESIDENTIAL');
   const [drawingTitle, setDrawingTitle] = useState('GROUND FLOOR PLAN');
@@ -306,7 +306,7 @@ export const VasthuToolsView: React.FC = () => {
     if (facing === 'West') {
       // 1. Kitchen (SE - Top Right)
       list.push({
-        name: 'KITCHEN',
+        name: 'Kitchen',
         x: leftW,
         y: 0,
         w: rightW,
@@ -321,7 +321,7 @@ export const VasthuToolsView: React.FC = () => {
       const poojaW = Math.round(leftW * 0.45);
       if (includePooja) {
         list.push({
-          name: 'POOJA',
+          name: 'pooja',
           x: 0,
           y: 0,
           w: poojaW,
@@ -335,7 +335,7 @@ export const VasthuToolsView: React.FC = () => {
       }
 
       list.push({
-        name: 'BEDROOM 2',
+        name: 'Bed Room',
         x: includePooja ? poojaW : 0,
         y: 0,
         w: includePooja ? (leftW - poojaW) : leftW,
@@ -345,7 +345,7 @@ export const VasthuToolsView: React.FC = () => {
         doorPos: 0.5,
         windowWalls: ['top'],
         attachedToilet: {
-          name: 'A.TOILET',
+          name: 'A.Bath',
           x: includePooja ? poojaW : 0,
           y: Math.round(rearH * 0.7),
           w: Math.round(leftW * 0.35),
@@ -355,7 +355,7 @@ export const VasthuToolsView: React.FC = () => {
       });
 
       list.push({
-        name: 'LIVING HALL',
+        name: 'Hall',
         x: 0,
         y: rearH,
         w: leftW,
@@ -368,7 +368,7 @@ export const VasthuToolsView: React.FC = () => {
       });
 
       list.push({
-        name: 'DINING AREA',
+        name: 'Dining Area',
         x: leftW,
         y: rearH,
         w: rightW,
@@ -380,7 +380,7 @@ export const VasthuToolsView: React.FC = () => {
 
       const mBedH = frontH;
       list.push({
-        name: 'MASTER BEDROOM',
+        name: 'Bed Room',
         x: leftW,
         y: rearH + midH,
         w: rightW,
@@ -390,7 +390,7 @@ export const VasthuToolsView: React.FC = () => {
         doorPos: 0.2,
         windowWalls: ['right', 'bottom'],
         attachedToilet: {
-          name: 'A.TOILET',
+          name: 'A.Bath',
           x: leftW + Math.round(rightW * 0.6),
           y: rearH + midH,
           w: rightW - Math.round(rightW * 0.6),
@@ -401,7 +401,7 @@ export const VasthuToolsView: React.FC = () => {
 
       if (bedCount === 3) {
         list.push({
-          name: 'BEDROOM 3',
+          name: 'Bed Room',
           x: 0,
           y: rearH + midH,
           w: leftW,
@@ -411,7 +411,7 @@ export const VasthuToolsView: React.FC = () => {
           doorPos: 0.8,
           windowWalls: ['left', 'bottom'],
           attachedToilet: {
-            name: 'A.TOILET',
+            name: 'A.Bath',
             x: 0,
             y: rearH + midH,
             w: Math.round(leftW * 0.35),
@@ -422,7 +422,7 @@ export const VasthuToolsView: React.FC = () => {
       } else if (includeParking) {
         const parkW = Math.round(leftW * 0.65);
         list.push({
-          name: 'CAR PARKING',
+          name: 'Portico',
           x: 0,
           y: rearH + midH,
           w: parkW,
@@ -433,13 +433,13 @@ export const VasthuToolsView: React.FC = () => {
         });
         
         list.push({
-          name: 'FRONT GARDEN',
+          name: 'Garden',
           x: parkW,
           y: rearH + midH,
           w: leftW - parkW,
           h: frontH,
           type: 'garden',
-          vastuNotes: 'Open green garden area in North/NW.'
+          vastuNotes: 'Open green garden area.'
         });
       }
 
@@ -457,7 +457,7 @@ export const VasthuToolsView: React.FC = () => {
 
     } else {
       list.push({
-        name: 'KITCHEN',
+        name: 'Kitchen',
         x: leftW,
         y: rearH + midH,
         w: rightW,
@@ -470,7 +470,7 @@ export const VasthuToolsView: React.FC = () => {
       });
 
       list.push({
-        name: 'MASTER BEDROOM',
+        name: 'Bed Room',
         x: 0,
         y: 0,
         w: leftW,
@@ -480,7 +480,7 @@ export const VasthuToolsView: React.FC = () => {
         doorPos: 0.7,
         windowWalls: ['top', 'left'],
         attachedToilet: {
-          name: 'A.TOILET',
+          name: 'A.Bath',
           x: 0,
           y: 0,
           w: Math.round(leftW * 0.35),
@@ -491,7 +491,7 @@ export const VasthuToolsView: React.FC = () => {
 
       if (includePooja) {
         list.push({
-          name: 'POOJA',
+          name: 'pooja',
           x: leftW,
           y: 0,
           w: rightW,
@@ -505,7 +505,7 @@ export const VasthuToolsView: React.FC = () => {
       }
 
       list.push({
-        name: 'LIVING HALL',
+        name: 'Hall',
         x: 0,
         y: rearH,
         w: W,
@@ -518,7 +518,7 @@ export const VasthuToolsView: React.FC = () => {
       });
 
       list.push({
-        name: 'BEDROOM 2',
+        name: 'Bed Room',
         x: 0,
         y: rearH + midH,
         w: leftW,
@@ -528,7 +528,7 @@ export const VasthuToolsView: React.FC = () => {
         doorPos: 0.5,
         windowWalls: ['left', 'bottom'],
         attachedToilet: {
-          name: 'A.TOILET',
+          name: 'A.Bath',
           x: 0,
           y: rearH + midH,
           w: Math.round(leftW * 0.35),
@@ -542,7 +542,7 @@ export const VasthuToolsView: React.FC = () => {
   };
 
   const drawDimensionLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, text: string) => {
-    ctx.strokeStyle = '#fb8500'; 
+    ctx.strokeStyle = '#ef4444'; // Red dimensions matching Sample 2pdf.pdf
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -552,7 +552,7 @@ export const VasthuToolsView: React.FC = () => {
     const angle = Math.atan2(y2 - y1, x2 - x1);
     const arrowLen = 5;
 
-    ctx.fillStyle = '#fb8500';
+    ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x1 + arrowLen * Math.cos(angle + Math.PI/6), y1 + arrowLen * Math.sin(angle + Math.PI/6));
@@ -572,8 +572,8 @@ export const VasthuToolsView: React.FC = () => {
     ctx.save();
     ctx.translate(midX, midY);
     ctx.rotate(angle);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(text, 0, -2);
@@ -582,25 +582,24 @@ export const VasthuToolsView: React.FC = () => {
 
   // --- PROGRAMMATIC FURNITURE DRAWING HELPERS ---
   const drawBedBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#62899c'; 
+    ctx.strokeStyle = '#7d4e57'; // Brownish bed matching PDF style
     ctx.lineWidth = 0.8;
     const bW = rw * 0.55;
     const bH = rh * 0.58;
     const bx = rx + (rw - bW) / 2;
     const by = ry + 6;
 
-    // Outer double-frame
     ctx.strokeRect(bx, by, bW, bH);
     ctx.strokeRect(bx - 1.5, by - 1.5, bW + 3, bH + 3);
     ctx.strokeRect(bx, by, bW, bH * 0.12); // Headboard
     
-    // 2 Pillows with pillowcase borders
+    // Pillows
     const pW = bW * 0.38;
     const pH = bH * 0.18;
     ctx.strokeRect(bx + (bW * 0.08), by + (bH * 0.16), pW, pH);
     ctx.strokeRect(bx + (bW * 0.54), by + (bH * 0.16), pW, pH);
 
-    // Folded quilt crease lines
+    // Blanket creases
     ctx.strokeRect(bx, by + (bH * 0.44), bW, bH * 0.56);
     ctx.beginPath();
     ctx.moveTo(bx, by + (bH * 0.48));
@@ -609,14 +608,13 @@ export const VasthuToolsView: React.FC = () => {
   };
 
   const drawCarBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#8ecae6'; 
+    ctx.strokeStyle = '#475569'; // Slate dark blue car
     ctx.lineWidth = 1;
     const cW = rw * 0.56;
     const cH = rh * 0.75;
     const cx = rx + (rw - cW) / 2;
     const cy = ry + (rh - cH) / 2;
 
-    // Curved Car frame outline (Autocad standard block style)
     ctx.beginPath();
     ctx.moveTo(cx + 10, cy);
     ctx.lineTo(cx + cW - 10, cy);
@@ -629,7 +627,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.quadraticCurveTo(cx, cy, cx + 10, cy);
     ctx.stroke();
 
-    // Windshield screen & Bonnet grill stripes
     ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.22), cW * 0.76, cH * 0.12);
     ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.68), cW * 0.76, cH * 0.08); // back screen
 
@@ -639,19 +636,16 @@ export const VasthuToolsView: React.FC = () => {
     ctx.moveTo(cx + (cW * 0.75), cy); ctx.lineTo(cx + (cW * 0.75), cy + (cH * 0.22));
     ctx.stroke();
 
-    // Front seats & Steering wheel
     ctx.strokeRect(cx + (cW * 0.18), cy + (cH * 0.28), cW * 0.26, cH * 0.14);
     ctx.strokeRect(cx + (cW * 0.56), cy + (cH * 0.28), cW * 0.26, cH * 0.14);
     ctx.beginPath();
     ctx.arc(cx + (cW * 0.31), cy + (cH * 0.26), 3, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Mirrors
     ctx.strokeRect(cx - 3.5, cy + (cH * 0.24), 3.5, cH * 0.06);
     ctx.strokeRect(cx + cW, cy + (cH * 0.24), 3.5, cH * 0.06);
 
-    // Wheels slots
-    ctx.fillStyle = '#222222';
+    ctx.fillStyle = '#475569';
     ctx.fillRect(cx - 2, cy + (cH * 0.12), 2, cH * 0.16);
     ctx.fillRect(cx + cW, cy + (cH * 0.12), 2, cH * 0.16);
     ctx.fillRect(cx - 2, cy + (cH * 0.68), 2, cH * 0.16);
@@ -659,7 +653,7 @@ export const VasthuToolsView: React.FC = () => {
   };
 
   const drawSofaBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#62899c'; 
+    ctx.strokeStyle = '#475569'; 
     ctx.lineWidth = 0.8;
     
     const sx = rx + 8;
@@ -667,21 +661,19 @@ export const VasthuToolsView: React.FC = () => {
     const sW = rw * 0.76;
     const sH = rh * 0.66;
     
-    ctx.strokeRect(sx, sy, sW, sH * 0.22); // backing frame
-    ctx.strokeRect(sx - 2, sy, 2, sH * 0.6); // armrests left
-    ctx.strokeRect(sx + sW, sy, 2, sH * 0.6); // armrests right
+    ctx.strokeRect(sx, sy, sW, sH * 0.22);
+    ctx.strokeRect(sx - 2, sy, 2, sH * 0.6); 
+    ctx.strokeRect(sx + sW, sy, 2, sH * 0.6); 
 
-    // Seats segments
     ctx.strokeRect(sx, sy + (sH * 0.22), sW * 0.33, sH * 0.45);
     ctx.strokeRect(sx + (sW * 0.33), sy + (sH * 0.22), sW * 0.33, sH * 0.45);
     ctx.strokeRect(sx + (sW * 0.66), sy + (sH * 0.22), sW * 0.34, sH * 0.45);
 
-    // Center Coffee table
     ctx.strokeRect(sx + (sW * 0.2), sy + (sH * 0.82), sW * 0.6, sH * 0.2);
   };
 
   const drawDiningBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#62899c'; 
+    ctx.strokeStyle = '#475569'; 
     ctx.lineWidth = 0.8;
 
     const tW = rw * 0.46;
@@ -689,9 +681,8 @@ export const VasthuToolsView: React.FC = () => {
     const tx = rx + (rw - tW) / 2;
     const ty = ry + (rh - tH) / 2;
     
-    ctx.strokeRect(tx, ty, tW, tH); // center table
+    ctx.strokeRect(tx, ty, tW, tH);
 
-    // Chairs with backrest support lines
     const chairsX = [tx - 5, tx + tW];
     chairsX.forEach((cx) => {
       ctx.strokeRect(cx, ty + (tH * 0.15), 5, tH * 0.22);
@@ -700,14 +691,13 @@ export const VasthuToolsView: React.FC = () => {
   };
 
   const drawKitchenBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#62899c'; 
+    ctx.strokeStyle = '#475569'; 
     ctx.lineWidth = 0.8;
 
     const slabW = 10;
-    ctx.strokeRect(rx, ry, slabW, rh); // vertical slab
-    ctx.strokeRect(rx, ry, rw, slabW); // horizontal slab
+    ctx.strokeRect(rx, ry, slabW, rh);
+    ctx.strokeRect(rx, ry, rw, slabW);
 
-    // 2-burners double gas stove
     const stX = rx + (rw * 0.42);
     const stY = ry + 2.5;
     ctx.strokeRect(stX, stY, 22, 5.5);
@@ -716,15 +706,13 @@ export const VasthuToolsView: React.FC = () => {
     ctx.arc(stX + 16.5, stY + 2.75, 1.8, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Wash sink container
     ctx.strokeRect(rx + 2, ry + (rh * 0.48), 6.5, 13);
   };
 
   const drawGardenBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
-    ctx.strokeStyle = '#22c55e'; // Grass green color
+    ctx.strokeStyle = '#22c55e'; // Grass green star foliage matching PDF
     ctx.lineWidth = 0.8;
 
-    // Draw overlapping organic bubble bush clusters (similar to CAD patterns)
     const gap = 16;
     for (let gx = rx + 10; gx < rx + rw - 10; gx += gap) {
       for (let gy = ry + 10; gy < ry + rh - 10; gy += gap) {
@@ -746,9 +734,8 @@ export const VasthuToolsView: React.FC = () => {
     const py = ry + (rh - pH) / 2;
     
     ctx.strokeRect(px, py, pW, pH);
-    ctx.strokeRect(px - 1.5, py - 1.5, pW + 3, pH + 3); // Altar step
+    ctx.strokeRect(px - 1.5, py - 1.5, pW + 3, pH + 3); 
     
-    // flame lamp center
     ctx.beginPath();
     ctx.arc(px + (pW / 2), py + (pH / 2), 2.5, 0, Math.PI * 2);
     ctx.stroke();
@@ -762,12 +749,11 @@ export const VasthuToolsView: React.FC = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Save and upscale context 3x for high-DPI rendering
     ctx.save();
-    ctx.scale(3, 3); // Upscaling factor for super-sharp graphics!
+    ctx.scale(3, 3); // 3x upscale for sharp prints
 
     const pad = 35;
-    const cw = 500 - (pad * 2); // coordinates calculated relative to 500x660 space
+    const cw = 500 - (pad * 2); 
     const ch = 460 - (pad * 2);
 
     const scaleX = cw / plotWidth;
@@ -783,52 +769,39 @@ export const VasthuToolsView: React.FC = () => {
 
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-    // Draw Black CAD background
-    ctx.fillStyle = '#000000'; 
+    // --- 1. DRAW PURE WHITE PAPER SHEET BACKGROUND ---
+    ctx.fillStyle = '#ffffff'; 
     ctx.fillRect(0, 0, 500, 660);
 
-    // Dotted CAD Grid lines
-    ctx.strokeStyle = '#111111'; 
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < 500; i += 20) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0); ctx.lineTo(i, 660);
-      ctx.stroke();
-    }
-    for (let j = 0; j < 660; j += 20) {
-      ctx.beginPath();
-      ctx.moveTo(0, j); ctx.lineTo(500, j);
-      ctx.stroke();
-    }
-
-    // Outer framing double border (white)
-    ctx.strokeStyle = '#ffffff'; 
-    ctx.lineWidth = 1.8;
+    // Outer boundary royal blue borders matching Sample 2pdf.pdf
+    ctx.strokeStyle = '#005198'; 
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(5, 5, 490, 650);
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = 0.8;
     ctx.strokeRect(8, 8, 484, 644);
 
-    // Plot boundaries (neon cyan outline)
-    ctx.strokeStyle = '#00ffff'; 
-    ctx.lineWidth = 2.5;
+    // Plot boundaries (Black CAD outline)
+    ctx.strokeStyle = '#11151c'; 
+    ctx.lineWidth = 2;
     ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
 
-    // Draw partitions & detailed furniture shapes
+    // 2. Draw room partitions & furniture details
     rooms.forEach((room) => {
       const rx = transX(room.x);
       const ry = transY(room.y);
       const rw = scaleFeet(room.w);
       const rh = scaleFeet(room.h);
 
-      ctx.fillStyle = 'rgba(0, 255, 255, 0.04)'; 
+      // Clean white rooms
+      ctx.fillStyle = '#ffffff'; 
       ctx.fillRect(rx, ry, rw, rh);
 
-      // Walls (Neon Green)
-      ctx.strokeStyle = '#00ff00'; 
+      // Wall outlines (black double outlines)
+      ctx.strokeStyle = '#11151c'; 
       ctx.lineWidth = 1.5;
       ctx.strokeRect(rx, ry, rw, rh);
 
-      // Furniture Block components
+      // Components
       if (room.type === 'bedroom' || room.type === 'master') {
         drawBedBlock(ctx, rx, ry, rw, rh);
       } else if (room.type === 'parking') {
@@ -852,51 +825,51 @@ export const VasthuToolsView: React.FC = () => {
         const tw = scaleFeet(room.attachedToilet.w);
         const th = scaleFeet(room.attachedToilet.h);
 
-        ctx.fillStyle = 'rgba(255, 0, 255, 0.05)'; 
+        ctx.fillStyle = '#ffffff'; 
         ctx.fillRect(tx, ty, tw, th);
-        ctx.strokeStyle = '#ff00ff';
+        ctx.strokeStyle = '#11151c';
         ctx.strokeRect(tx, ty, tw, th);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 8px monospace';
+        // Toilet labels (e.g. A.Bath)
+        ctx.fillStyle = '#11151c';
+        ctx.font = 'bold 8px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(room.attachedToilet.name, tx + (tw / 2), ty + (th / 2));
+        ctx.fillText(room.attachedToilet.name, tx + (tw / 2), ty + (th / 2) - 5);
+        ctx.fillStyle = '#ef4444'; // Red sizes
+        ctx.fillText("5'x11'2.5\"", tx + (tw / 2), ty + (th / 2) + 5);
       }
 
       // Staircase steps
       if (room.type === 'staircase') {
-        ctx.strokeStyle = '#00ffff';
+        ctx.strokeStyle = '#005198';
         ctx.lineWidth = 0.8;
         const stepsCount = 10;
         const stepW = rw / stepsCount;
         for (let i = 0; i < stepsCount; i++) {
           ctx.strokeRect(rx + (i * stepW), ry, stepW, rh);
         }
-        ctx.fillStyle = '#fb8500';
-        ctx.font = 'bold 7px monospace';
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 7px sans-serif';
         ctx.fillText('UP ➔', rx + (rw / 2), ry + (rh / 2));
       }
 
-      // Room labels & size tags
-      ctx.fillStyle = '#ffffff'; 
-      ctx.font = 'bold 9.5px monospace';
+      // Room labels (bold black)
+      ctx.fillStyle = '#11151c'; 
+      ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
       const labelY = room.attachedToilet ? ry + (rh * 0.35) : ry + (rh / 2);
       ctx.fillText(room.name, rx + (rw / 2), labelY);
 
-      ctx.fillStyle = '#00ffff'; 
-      ctx.font = 'normal 8.5px monospace';
-      ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 12);
+      // Room sizes (Red color text below name, e.g. 16'X15' matching PDF)
+      ctx.fillStyle = '#ef4444'; 
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText(`${room.w}'x${room.h}'`, rx + (rw / 2), labelY + 12);
 
-      // Doors
+      // --- AUTHENTIC DOOR JOINERY SYMBOLS: RED CIRCLE + GREEN ARC ---
       if (room.doorWall && room.doorPos !== undefined) {
-        ctx.strokeStyle = '#ffff00'; 
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        
         const doorSize = scaleFeet(2.8); 
         let dx = rx;
         let dy = ry;
@@ -904,34 +877,58 @@ export const VasthuToolsView: React.FC = () => {
         if (room.doorWall === 'bottom') {
           dx = rx + (rw * room.doorPos);
           dy = ry + rh;
+        } else if (room.doorWall === 'top') {
+          dx = rx + (rw * room.doorPos);
+          dy = ry;
+        } else if (room.doorWall === 'left') {
+          dx = rx;
+          dy = ry + (rh * room.doorPos);
+        } else if (room.doorWall === 'right') {
+          dx = rx + rw;
+          dy = ry + (rh * room.doorPos);
+        }
+
+        // Draw green door leaf swing arc
+        ctx.strokeStyle = '#22c55e'; // Green swing
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (room.doorWall === 'bottom') {
           ctx.moveTo(dx, dy);
           ctx.lineTo(dx + doorSize, dy);
           ctx.arc(dx, dy, doorSize, 0, Math.PI * 0.25);
         } else if (room.doorWall === 'top') {
-          dx = rx + (rw * room.doorPos);
-          dy = ry;
           ctx.moveTo(dx, dy);
           ctx.lineTo(dx + doorSize, dy);
           ctx.arc(dx, dy, doorSize, 0, -Math.PI * 0.25);
         } else if (room.doorWall === 'left') {
-          dx = rx;
-          dy = ry + (rh * room.doorPos);
           ctx.moveTo(dx, dy);
           ctx.lineTo(dx, dy + doorSize);
           ctx.arc(dx, dy, doorSize, Math.PI * 0.5, Math.PI * 0.75);
         } else if (room.doorWall === 'right') {
-          dx = rx + rw;
-          dy = ry + (rh * room.doorPos);
           ctx.moveTo(dx, dy);
           ctx.lineTo(dx, dy + doorSize);
           ctx.arc(dx, dy, doorSize, Math.PI * 0.5, Math.PI * 0.25, true);
         }
         ctx.stroke();
+
+        // Draw small red circle hinge with door label (D/D2/MD) inside
+        ctx.fillStyle = '#ef4444'; // Red circle
+        ctx.beginPath();
+        ctx.arc(dx, dy, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 7px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const doorLabel = room.type === 'kitchen' || room.type === 'master' ? 'D' : 
+                          room.type === 'pooja' ? 'D2' : 'MD';
+        ctx.fillText(doorLabel, dx, dy);
       }
 
-      // Windows
+      // Windows (Double line blue grids)
       if (room.windowWalls) {
-        ctx.strokeStyle = '#00ffff'; 
+        ctx.strokeStyle = '#005198'; 
         ctx.lineWidth = 2.5;
         
         room.windowWalls.forEach((wWall) => {
@@ -959,16 +956,16 @@ export const VasthuToolsView: React.FC = () => {
     drawDimensionLine(ctx, offsetX, offsetY - 18, offsetX + scaleFeet(plotWidth), offsetY - 18, `${plotWidth}'0"`);
     drawDimensionLine(ctx, offsetX - 18, offsetY + scaleFeet(plotLength), offsetX - 18, offsetY, `${plotLength}'0"`);
 
-    // 4. North Direction Arrow Indicator
+    // 4. North Direction Arrow Indicator (Colored Compass Rose)
     const navX = 40;
     const navY = 40;
-    ctx.strokeStyle = '#00ffff';
+    ctx.strokeStyle = '#005198';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(navX, navY, 15, 0, Math.PI * 2);
     ctx.stroke();
     
-    ctx.fillStyle = '#fb8500';
+    ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.moveTo(navX, navY - 13);
     ctx.lineTo(navX - 4, navY);
@@ -976,19 +973,19 @@ export const VasthuToolsView: React.FC = () => {
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#005198';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.fillText('N', navX, navY - 16);
 
     // Label road facing direction
-    ctx.fillStyle = '#ffff00';
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillText(`⚡ ROAD ACCESS: ${plotFacing.toUpperCase()} FACING ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.fillText(`⚡ ${plotFacing.toUpperCase()} FACING ROAD ACCESS ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
 
-    // --- 5. DRAW BLUEPRINT TITLE BLOCK TABLE (bottom from y = 490 to y = 645) ---
+    // --- 5. DRAW BLUEPRINT TITLE BLOCK TABLE (bottom from y = 490 to y = 645 in royal blue) ---
     const tY = 490;
-    ctx.strokeStyle = '#ffffff'; 
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#005198'; // Royal blue lines
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(12, tY, 476, 150);
     ctx.strokeRect(14, tY + 2, 472, 146);
 
@@ -1002,24 +999,29 @@ export const VasthuToolsView: React.FC = () => {
     ctx.stroke();
 
     // Box 1 details (CONSTRUCTION & CLIENT)
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#005198';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 8.5px monospace';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.fillText('CONSTRUCTION:', 18, tY + 15);
-    ctx.font = 'normal 8px monospace';
+    ctx.fillStyle = '#11151c';
+    ctx.font = 'normal 8px sans-serif';
     ctx.fillText(constructionType.toUpperCase(), 18, tY + 30);
 
-    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#005198';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.fillText('CLIENT:', 18, tY + 80);
-    ctx.font = 'normal 8px monospace';
+    ctx.fillStyle = '#11151c';
+    ctx.font = 'normal 8.5px sans-serif';
     ctx.fillText(clientName.toUpperCase(), 18, tY + 95);
 
     // Box 2 details (JOINERIES DETAILS Table)
-    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#005198';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('JOINERIES DETAILS', 165, tY + 15);
     
-    ctx.font = 'normal 7.5px monospace';
+    ctx.fillStyle = '#11151c';
+    ctx.font = 'normal 7.5px sans-serif';
     ctx.textAlign = 'left';
     const jData = [
       'MD   Main Door     3\'6" x 7\'0"',
@@ -1034,25 +1036,26 @@ export const VasthuToolsView: React.FC = () => {
     });
 
     // Box 3 details (TOTAL AREA & COMPASS)
+    ctx.fillStyle = '#005198';
     ctx.textAlign = 'center';
-    ctx.font = 'bold 8.5px monospace';
+    ctx.font = 'bold 8.5px sans-serif';
     ctx.fillText('TOTAL AREA', 265, tY + 15);
-    ctx.font = 'normal 8px monospace';
+    ctx.font = 'normal 8px sans-serif';
     ctx.fillText('Buildup Area:', 265, tY + 35);
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = '#00ffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = '#ef4444'; // Red total area value
     ctx.fillText(`${(plotWidth * plotLength * 0.85).toFixed(2)} Sqft`, 265, tY + 50);
 
     // Compass rose
     const cX = 265;
     const cY = tY + 100;
-    ctx.strokeStyle = '#00ffff';
+    ctx.strokeStyle = '#005198';
     ctx.beginPath();
     ctx.arc(cX, cY, 20, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#005198';
     ctx.fillText('N', cX, cY - 24);
-    ctx.fillStyle = '#fb8500';
+    ctx.fillStyle = '#ef4444';
     ctx.beginPath();
     ctx.moveTo(cX, cY - 18);
     ctx.lineTo(cX - 4, cY);
@@ -1061,36 +1064,36 @@ export const VasthuToolsView: React.FC = () => {
     ctx.fill();
 
     // Box 4 details (DRAWING TITLE & DWG INFO)
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#005198';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 8px monospace';
+    ctx.font = 'bold 8px sans-serif';
     ctx.fillText('DRAWING TITLE:', 315, tY + 15);
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = '#00ff00';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillStyle = '#005198';
     ctx.fillText(drawingTitle.toUpperCase(), 315, tY + 30);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#11151c';
+    ctx.font = 'bold 8px sans-serif';
     const cDate = new Date().toLocaleDateString();
     ctx.fillText(`DATE:  ${cDate}`, 315, tY + 70);
     ctx.fillText(`SCALE: ${scaleLabel}`, 315, tY + 90);
     ctx.fillText(`DWG NO: ${dwgNo.toUpperCase()}`, 315, tY + 110);
 
     // Box 5 details (SIGNATURES BLOCK)
-    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#005198';
+    ctx.font = 'bold 8px sans-serif';
     ctx.fillText('CHECKED BY:', 415, tY + 15);
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = '#00ffff';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillStyle = '#005198';
     ctx.fillText('ENGINEER', 415, tY + 30);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#005198';
+    ctx.font = 'bold 8px sans-serif';
     ctx.fillText('APPROVED BY:', 415, tY + 80);
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = '#00ffff';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillStyle = '#005198';
     ctx.fillText('CHIEF ENG.', 415, tY + 95);
 
-    // Restore context
     ctx.restore();
   };
 
@@ -1130,7 +1133,6 @@ export const VasthuToolsView: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Use raw high-res canvas image data to prevent blurriness
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1138,7 +1140,8 @@ export const VasthuToolsView: React.FC = () => {
       format: [540, 700]
     });
 
-    pdf.setFillColor(0, 0, 0);
+    // White backing sheet for PDF print
+    pdf.setFillColor(255, 255, 255);
     pdf.rect(0, 0, 540, 700, 'F');
     pdf.addImage(imgData, 'JPEG', 20, 20, 500, 660);
 
@@ -1150,10 +1153,8 @@ export const VasthuToolsView: React.FC = () => {
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
     const dxfLines: string[] = [];
 
-    // Header section
     dxfLines.push('0', 'SECTION', '2', 'ENTITIES');
 
-    // DXF line builder - strict coordinate and group layout with no trailing spaces
     const pushLine = (x1: number, y1: number, x2: number, y2: number, layer: string) => {
       dxfLines.push(
         '0', 'LINE',
@@ -1167,7 +1168,6 @@ export const VasthuToolsView: React.FC = () => {
       );
     };
 
-    // DXF text builder
     const pushText = (txt: string, x: number, y: number, h: number, layer: string) => {
       dxfLines.push(
         '0', 'TEXT',
@@ -1180,25 +1180,20 @@ export const VasthuToolsView: React.FC = () => {
       );
     };
 
-    // 1. Plot boundary lines
     pushLine(0, 0, plotWidth, 0, 'PLOT_BOUNDARY');
     pushLine(plotWidth, 0, plotWidth, plotLength, 'PLOT_BOUNDARY');
     pushLine(plotWidth, plotLength, 0, plotLength, 'PLOT_BOUNDARY');
     pushLine(0, plotLength, 0, 0, 'PLOT_BOUNDARY');
 
-    // 2. Rooms walls and text layers
     rooms.forEach((room) => {
-      // Wall outer rectangular outline
       pushLine(room.x, room.y, room.x + room.w, room.y, 'WALLS');
       pushLine(room.x + room.w, room.y, room.x + room.w, room.y + room.h, 'WALLS');
       pushLine(room.x + room.w, room.y + room.h, room.x, room.y + room.h, 'WALLS');
       pushLine(room.x, room.y + room.h, room.x, room.y, 'WALLS');
 
-      // Room name labels
       pushText(room.name, room.x + (room.w / 2), room.y + (room.h / 2), 1.1, 'ROOM_NAMES');
       pushText(`${room.w}' x ${room.h}'`, room.x + (room.w / 2), room.y + (room.h / 2) - 1.2, 0.75, 'ROOM_DIMENSIONS');
 
-      // Attached toilets
       if (room.attachedToilet) {
         const t = room.attachedToilet;
         pushLine(t.x, t.y, t.x + t.w, t.y, 'TOILETS');
@@ -1209,10 +1204,8 @@ export const VasthuToolsView: React.FC = () => {
       }
     });
 
-    // Close sections
     dxfLines.push('0', 'ENDSEC', '0', 'EOF');
 
-    // Combine with clean UNIX newline delimiters
     const dxfString = dxfLines.join('\n');
 
     const blob = new Blob([dStringResolve(dxfString)], { type: 'application/dxf' });
@@ -1225,7 +1218,6 @@ export const VasthuToolsView: React.FC = () => {
     addNotification('success', 'CAD drawing (DXF) file downloaded successfully. Ready to open in AutoCAD!');
   };
 
-  // Safe cleaner function to ensure absolutely clean string segments
   const dStringResolve = (val: string) => {
     return val.replace(/\r\n/g, '\n').trim();
   };
@@ -1427,7 +1419,7 @@ export const VasthuToolsView: React.FC = () => {
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {VASTHU_RULES[selectedDirection].avoid.map((r, i) => (
-                      <span key={i} className="text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 px-2 py-1 rounded-lg">
+                      <span key={i} className="text-[10px] font-semibold bg-rose-50 text-rose-705 dark:bg-rose-950/20 dark:text-rose-400 px-2 py-1 rounded-lg">
                         {r}
                       </span>
                     ))}
@@ -1587,8 +1579,8 @@ export const VasthuToolsView: React.FC = () => {
                       key={idx}
                       className={`flex gap-3 p-3 rounded-xl border text-xs leading-normal items-start ${
                         item.status === 'best' ? 'border-emerald-100 bg-emerald-50/20 text-emerald-808 dark:border-emerald-950/40 dark:bg-emerald-950/5' :
-                        item.status === 'acceptable' ? 'border-amber-100 bg-amber-50/20 text-amber-808 dark:border-amber-950/40 dark:bg-amber-950/5' :
-                        'border-rose-100 bg-rose-50/20 text-rose-808 dark:border-rose-950/40 dark:bg-rose-950/5'
+                        item.status === 'acceptable' ? 'border-amber-100 bg-amber-50/20 text-amber-808 dark:border-amber-955/40 dark:bg-amber-955/5' :
+                        'border-rose-100 bg-rose-50/20 text-rose-808 dark:border-rose-955/40 dark:bg-rose-955/5'
                       }`}
                     >
                       {item.status === 'best' && <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0" />}
@@ -1830,9 +1822,9 @@ export const VasthuToolsView: React.FC = () => {
               <div>
                 <h3 className="text-sm font-extrabold text-slate-955 dark:text-white flex items-center gap-1.5">
                   <Maximize className="h-4.5 w-4.5 text-[#fb8500]" />
-                  AutoCAD modeling View (2D CAD Grid)
+                  Paper Print blueprint View
                 </h3>
-                <p className="text-xs text-slate-500">AutoCAD-style neon layout vectors with double-ruled blueprint title block.</p>
+                <p className="text-xs text-slate-500">AutoCAD paper plot style with double-ruled royal blue border blocks & red sizes.</p>
               </div>
 
               {/* Multiple Exporters */}
@@ -1866,14 +1858,14 @@ export const VasthuToolsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Canvas Wrapper (High resolution upscaled canvas) */}
-            <div className="border border-slate-800 bg-[#000000] rounded-2xl p-2.5 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
+            {/* Canvas Wrapper */}
+            <div className="border border-slate-200 dark:border-slate-800 bg-[#ffffff] rounded-2xl p-2.5 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
               <canvas
                 ref={canvasRef}
-                width={1500} // 3x of 500 for High-DPI sharp rendering density
-                height={1980} // 3x of 660
-                style={{ width: '500px', height: '660px' }} // CSS locks browser display aspect ratio
-                className="max-w-full block rounded-xl border border-slate-900"
+                width={1500} 
+                height={1980} 
+                style={{ width: '500px', height: '660px' }} 
+                className="max-w-full block rounded-xl border border-slate-250 bg-white"
               />
             </div>
 
@@ -1887,7 +1879,7 @@ export const VasthuToolsView: React.FC = () => {
                   <div key={i} className="flex gap-2.5 p-3 rounded-xl border border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 text-xs">
                     <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-850 dark:text-white">{room.name}</span>
+                      <span className="font-bold text-slate-855 dark:text-white">{room.name}</span>
                       <p className="text-[11px] text-slate-500 mt-0.5">{room.vastuNotes}</p>
                     </div>
                   </div>
