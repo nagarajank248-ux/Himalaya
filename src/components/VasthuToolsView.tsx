@@ -20,7 +20,10 @@ import {
   FileText,
   Sparkles,
   Maximize,
-  Scale
+  Scale,
+  Send,
+  User,
+  Bot
 } from 'lucide-react';
 
 type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
@@ -118,9 +121,14 @@ interface RoomPlan {
   isVastuDoor?: boolean;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export const VasthuToolsView: React.FC = () => {
   const { addNotification } = useCRM();
-  const [activeTab, setActiveTab] = useState<'compass' | 'planner' | 'floorplan'>('compass');
+  const [activeTab, setActiveTab] = useState<'compass' | 'planner' | 'floorplan' | 'aichat'>('compass');
   
   // --- Compass States ---
   const [heading, setHeading] = useState(0);
@@ -271,12 +279,8 @@ export const VasthuToolsView: React.FC = () => {
 
   // AI Requirements parser - BULLETPROOF regex implementation
   const handleParseRequirements = () => {
-    const text = rawTextRequirements.toLowerCase();
-
-    // Remove asterisks & punctuation that block parsing
     const cleanedText = rawTextRequirements.replace(/\*/g, '').replace(/,/g, '').toLowerCase();
 
-    // 1. Matches width and length in formats: "23 x 39", "23x39", "23 by 39", "23*39"
     const sizeRegex = /(\d+)\s*(?:x|×|by|\*|\s)\s*(\d+)/i;
     const sizeMatch = cleanedText.match(sizeRegex);
     
@@ -289,7 +293,6 @@ export const VasthuToolsView: React.FC = () => {
       if (!isNaN(w) && w > 10) wVal = w;
       if (!isNaN(l) && l > 10) lVal = l;
     } else {
-      // Fallback: search for first 2 standalone numbers in the requirement content
       const fallbackNumbers = cleanedText.match(/\d+/g);
       if (fallbackNumbers && fallbackNumbers.length >= 2) {
         const w = parseInt(fallbackNumbers[0]);
@@ -302,26 +305,22 @@ export const VasthuToolsView: React.FC = () => {
     setPlotWidth(wVal);
     setPlotLength(lVal);
 
-    // 2. Facing direction
     if (cleanedText.includes('west')) setPlotFacing('West');
     else if (cleanedText.includes('east')) setPlotFacing('East');
     else if (cleanedText.includes('north')) setPlotFacing('North');
     else if (cleanedText.includes('south')) setPlotFacing('South');
 
-    // 3. Bedroom count scanning
     if (cleanedText.includes('3 bedroom') || cleanedText.includes('3 bhk') || cleanedText.includes('three bedroom')) {
       setBedroomCount(3);
     } else if (cleanedText.includes('2 bedroom') || cleanedText.includes('2 bhk') || cleanedText.includes('two bedroom')) {
       setBedroomCount(2);
     }
 
-    // 4. Checklist includes
     setIncludePooja(cleanedText.includes('pooja') || cleanedText.includes('poojai') || cleanedText.includes('altar'));
     setIncludeStairs(cleanedText.includes('stair') || cleanedText.includes('staircase') || cleanedText.includes('steps'));
     setIncludeParking(cleanedText.includes('park') || cleanedText.includes('parking') || cleanedText.includes('car') || cleanedText.includes('portico'));
     setIncludeGarden(cleanedText.includes('garden') || cleanedText.includes('garder') || cleanedText.includes('thottam') || cleanedText.includes('landscaping'));
 
-    // Activate visual drawing
     setHasDraftedPlan(true);
 
     addNotification('success', `AI Parser Drafted: ${wVal}x${lVal} ft, ${plotFacing} Facing. Blueprint updated!`);
@@ -333,60 +332,49 @@ export const VasthuToolsView: React.FC = () => {
     let requiredArea = 0;
     const roomBreakdown: { name: string; reqSft: number }[] = [];
 
-    // Master Bed + Bath
     roomBreakdown.push({ name: 'Master Bedroom', reqSft: 120 });
     roomBreakdown.push({ name: 'M.Bed Toilet', reqSft: 40 });
     requiredArea += 160;
 
-    // Bed 2 + Bath
     roomBreakdown.push({ name: 'Bedroom 2', reqSft: 100 });
     roomBreakdown.push({ name: 'Bed 2 Toilet', reqSft: 40 });
     requiredArea += 140;
 
-    // Bed 3 + Bath
     if (bedroomCount === 3) {
       roomBreakdown.push({ name: 'Bedroom 3', reqSft: 100 });
       roomBreakdown.push({ name: 'Bed 3 Toilet', reqSft: 40 });
       requiredArea += 140;
     }
 
-    // Kitchen
     roomBreakdown.push({ name: 'Kitchen Area', reqSft: 80 });
     requiredArea += 80;
 
-    // Living Hall
     roomBreakdown.push({ name: 'Living Hall', reqSft: 150 });
     requiredArea += 150;
 
-    // Dining Area
     roomBreakdown.push({ name: 'Dining Area', reqSft: 70 });
     requiredArea += 70;
 
-    // Pooja Room
     if (includePooja) {
       roomBreakdown.push({ name: 'Pooja Room', reqSft: 30 });
       requiredArea += 30;
     }
 
-    // Staircase
     if (includeStairs) {
       roomBreakdown.push({ name: 'Staircase Block', reqSft: 80 });
       requiredArea += 80;
     }
 
-    // Parking Portico
     if (includeParking) {
       roomBreakdown.push({ name: 'Car Parking Portico', reqSft: 130 });
       requiredArea += 130;
     }
 
-    // Garden
     if (includeGarden) {
       roomBreakdown.push({ name: 'Garden Zone', reqSft: 60 });
       requiredArea += 60;
     }
 
-    // Add 15% circulation margin for walls, corridors, and doors
     const circulation = Math.round(requiredArea * 0.15);
     const minFinalNeeded = requiredArea + circulation;
 
@@ -409,6 +397,107 @@ export const VasthuToolsView: React.FC = () => {
 
   const feasibility = getSpaceFeasibility();
 
+  // --- AI CHATBOT STATES ---
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', content: 'Welcome to Himalaya AI Vastu Assistant! I can help you align your home drawings with Vastu Shastra rules. Ask me anything about bedrooms, kitchens, entrances, or staircases!' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'aichat') {
+      scrollToBottom();
+    }
+  }, [chatMessages, activeTab]);
+
+  const handleSendChatMessage = async (customText?: string) => {
+    const textToSend = customText || chatInput;
+    if (!textToSend.trim() || chatLoading) return;
+
+    if (!customText) {
+      setChatInput('');
+    }
+
+    const updatedMessages = [...chatMessages, { role: 'user', content: textToSend } as ChatMessage];
+    setChatMessages(updatedMessages);
+    setChatLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messages: updatedMessages })
+      });
+
+      if (!response.ok) {
+        throw new Error('API server returned error.');
+      }
+
+      const data = await response.json();
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+    } catch (e) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Sorry, I could not complete the request. Please check process.env.GEMINI_API_KEY settings.' }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handlePromptChipClick = (msg: string) => {
+    handleSendChatMessage(msg);
+  };
+
+  // Custom client side parser to render Markdown style text into nice HTML blocks safely
+  const renderMessageContent = (txt: string) => {
+    const parseBoldText = (text: string) => {
+      const parts = text.split(/(\*\*.*?\*\*)/g);
+      return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} className="font-extrabold text-[#005198]">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+    };
+
+    return txt.split('\n').map((line, idx) => {
+      const cleanLine = line.trim();
+      if (!cleanLine) return <div key={idx} className="h-2" />;
+
+      if (cleanLine.startsWith('-') || cleanLine.startsWith('*')) {
+        return (
+          <li key={idx} className="ml-4 list-disc my-1 text-slate-700 dark:text-slate-350">
+            {parseBoldText(cleanLine.substring(1).trim())}
+          </li>
+        );
+      }
+      if (cleanLine.startsWith('###')) {
+        return (
+          <h4 key={idx} className="font-extrabold text-sm text-[#005198] mt-3 mb-1 uppercase tracking-tight">
+            {cleanLine.replace(/###/g, '').trim()}
+          </h4>
+        );
+      }
+      if (cleanLine.startsWith('##')) {
+        return (
+          <h3 key={idx} className="font-black text-base text-[#005198] mt-4 mb-1 border-b border-slate-100 pb-0.5">
+            {cleanLine.replace(/##/g, '').trim()}
+          </h3>
+        );
+      }
+      return (
+        <p key={idx} className="my-1.5 leading-relaxed text-slate-700 dark:text-slate-300">
+          {parseBoldText(cleanLine)}
+        </p>
+      );
+    });
+  };
+
   const generateRoomsList = (W: number, L: number, facing: 'East' | 'West' | 'North' | 'South', bedCount: number): RoomPlan[] => {
     const list: RoomPlan[] = [];
     
@@ -420,7 +509,6 @@ export const VasthuToolsView: React.FC = () => {
     const frontH = L - rearH - midH;
 
     if (facing === 'West') {
-      // 1. Kitchen (SE - Top Right)
       list.push({
         name: 'Kitchen',
         x: leftW,
@@ -667,46 +755,6 @@ export const VasthuToolsView: React.FC = () => {
     return list;
   };
 
-  const drawDimensionLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, text: string) => {
-    ctx.strokeStyle = '#ef4444'; 
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const arrowLen = 5;
-
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 + arrowLen * Math.cos(angle + Math.PI/6), y1 + arrowLen * Math.sin(angle + Math.PI/6));
-    ctx.lineTo(x1 + arrowLen * Math.cos(angle - Math.PI/6), y1 + arrowLen * Math.sin(angle - Math.PI/6));
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - arrowLen * Math.cos(angle + Math.PI/6), y2 - arrowLen * Math.sin(angle + Math.PI/6));
-    ctx.lineTo(x2 - arrowLen * Math.cos(angle - Math.PI/6), y2 - arrowLen * Math.sin(angle - Math.PI/6));
-    ctx.closePath();
-    ctx.fill();
-
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-    ctx.save();
-    ctx.translate(midX, midY);
-    ctx.rotate(angle);
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(text, 0, -2);
-    ctx.restore();
-  };
-
-  // --- PROGRAMMATIC FURNITURE DRAWING HELPERS ---
   const drawBedBlock = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number) => {
     ctx.strokeStyle = '#7d4e57'; 
     ctx.lineWidth = 0.8;
@@ -895,7 +943,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.stroke();
   };
 
-  // REALISTIC TOILET COMMODE BLOCK
   const drawToiletCommode = (ctx: CanvasRenderingContext2D, tx: number, ty: number, tw: number, th: number) => {
     ctx.strokeStyle = '#62899c';
     ctx.lineWidth = 0.8;
@@ -943,6 +990,45 @@ export const VasthuToolsView: React.FC = () => {
     ctx.fillRect(rx + rw - thick + 0.5, ry + thick, thick - 1, rh - (thick * 2)); 
   };
 
+  const drawDimensionLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, text: string) => {
+    ctx.strokeStyle = '#ef4444'; 
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const arrowLen = 5;
+
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + arrowLen * Math.cos(angle + Math.PI/6), y1 + arrowLen * Math.sin(angle + Math.PI/6));
+    ctx.lineTo(x1 + arrowLen * Math.cos(angle - Math.PI/6), y1 + arrowLen * Math.sin(angle - Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - arrowLen * Math.cos(angle + Math.PI/6), y2 - arrowLen * Math.sin(angle + Math.PI/6));
+    ctx.lineTo(x2 - arrowLen * Math.cos(angle - Math.PI/6), y2 - arrowLen * Math.sin(angle - Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    ctx.save();
+    ctx.translate(midX, midY);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(text, 0, -2);
+    ctx.restore();
+  };
+
   const drawFloorPlan = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -952,22 +1038,18 @@ export const VasthuToolsView: React.FC = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    ctx.scale(4, 4); // 4x density
+    ctx.scale(4, 4);
 
-    // Draw White backing sheet
     ctx.fillStyle = '#ffffff'; 
     ctx.fillRect(0, 0, 500, 660);
 
-    // Draw double royal blue outer frames
     ctx.strokeStyle = '#005198'; 
     ctx.lineWidth = 2.5;
     ctx.strokeRect(5, 5, 490, 650);
     ctx.lineWidth = 0.8;
     ctx.strokeRect(8, 8, 484, 644);
 
-    // --- CASE A: USER HAS NOT PARSED/DRAFTED A PLAN YET ---
     if (!hasDraftedPlan) {
-      // Draw grid watermarks
       ctx.strokeStyle = '#f1f5f9';
       ctx.lineWidth = 0.5;
       for (let i = 20; i < 480; i += 20) {
@@ -981,7 +1063,6 @@ export const VasthuToolsView: React.FC = () => {
         ctx.stroke();
       }
 
-      // Draw Center Watermark
       ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold italic 12px sans-serif';
       ctx.textAlign = 'center';
@@ -994,7 +1075,6 @@ export const VasthuToolsView: React.FC = () => {
       ctx.fillText("to draft your Vastu-compliant blueprint.", 250, 260);
 
     } else {
-      // --- CASE B: DYNAMICALLY DRAW DRAFTED HOUSE PLAN ---
       const pad = 35;
       const cw = 500 - (pad * 2); 
       const ch = 460 - (pad * 2);
@@ -1012,7 +1092,6 @@ export const VasthuToolsView: React.FC = () => {
 
       const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-      // Plot boundaries
       ctx.strokeStyle = '#11151c'; 
       ctx.lineWidth = 2;
       ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
@@ -1218,7 +1297,7 @@ export const VasthuToolsView: React.FC = () => {
       ctx.fillText(`⚡ ${plotFacing.toUpperCase()} FACING ROAD ACCESS ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
     }
 
-    // --- 6. DRAW BLUEPRINT TITLE BLOCK TABLE (drawn on both states) ---
+    // --- 6. DRAW BLUEPRINT TITLE BLOCK TABLE ---
     const tY = 490;
     ctx.strokeStyle = '#005198'; 
     ctx.lineWidth = 2.5;
@@ -1478,13 +1557,13 @@ export const VasthuToolsView: React.FC = () => {
         </div>
 
         {/* Tab triggers */}
-        <div className="flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/85 shrink-0 self-start md:self-auto">
+        <div className="flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/85 shrink-0 self-start md:self-auto flex-wrap">
           <button
             onClick={() => setActiveTab('compass')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'compass'
-                ? 'bg-white text-slate-950 shadow-xs dark:bg-slate-800 dark:text-white'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-white text-slate-955 shadow-xs dark:bg-slate-800 dark:text-white'
+                : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-250'
             }`}
           >
             <Compass className="h-4 w-4" />
@@ -1494,8 +1573,8 @@ export const VasthuToolsView: React.FC = () => {
             onClick={() => setActiveTab('planner')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'planner'
-                ? 'bg-white text-slate-950 shadow-xs dark:bg-slate-800 dark:text-white'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-white text-slate-955 shadow-xs dark:bg-slate-800 dark:text-white'
+                : 'text-slate-500 hover:text-slate-955 dark:text-slate-400 dark:hover:text-slate-250'
             }`}
           >
             <Grid3X3 className="h-4 w-4" />
@@ -1505,12 +1584,23 @@ export const VasthuToolsView: React.FC = () => {
             onClick={() => setActiveTab('floorplan')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'floorplan'
-                ? 'bg-white text-slate-950 shadow-xs dark:bg-slate-800 dark:text-white'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-white text-slate-955 shadow-xs dark:bg-slate-800 dark:text-white'
+                : 'text-slate-500 hover:text-slate-955 dark:text-slate-400 dark:hover:text-slate-250'
             }`}
           >
             <Layout className="h-4 w-4" />
             2D Floor Plan CAD Suite
+          </button>
+          <button
+            onClick={() => setActiveTab('aichat')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'aichat'
+                ? 'bg-white text-slate-955 shadow-xs dark:bg-slate-800 dark:text-white'
+                : 'text-slate-550 hover:text-[#fb8500] dark:text-slate-400 dark:hover:text-slate-250'
+            }`}
+          >
+            <Sparkles className="h-4 w-4 text-[#fb8500]" />
+            AI Vastu Chat
           </button>
         </div>
       </div>
@@ -1646,7 +1736,7 @@ export const VasthuToolsView: React.FC = () => {
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {VASTHU_RULES[selectedDirection].acceptable.map((r, i) => (
-                        <span key={i} className="text-[10px] font-semibold bg-amber-50 text-amber-850 dark:bg-amber-950/20 dark:text-[#ffb703] px-2 py-1 rounded-lg">
+                        <span key={i} className="text-[10px] font-semibold bg-amber-50 text-amber-850 dark:bg-amber-955/20 dark:text-[#ffb703] px-2 py-1 rounded-lg">
                           {r}
                         </span>
                       ))}
@@ -1661,7 +1751,7 @@ export const VasthuToolsView: React.FC = () => {
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {VASTHU_RULES[selectedDirection].avoid.map((r, i) => (
-                      <span key={i} className="text-[10px] font-semibold bg-rose-50 text-rose-705 dark:bg-rose-950/20 dark:text-rose-450 px-2 py-1 rounded-lg">
+                      <span key={i} className="text-[10px] font-semibold bg-rose-50 text-rose-705 dark:bg-rose-955/20 dark:text-rose-450 px-2 py-1 rounded-lg">
                         {r}
                       </span>
                     ))}
@@ -1785,7 +1875,7 @@ export const VasthuToolsView: React.FC = () => {
                 <div className="flex justify-center items-baseline gap-1">
                   <span className={`text-5xl font-black ${
                     score >= 90 ? 'text-emerald-600' :
-                    score >= 70 ? 'text-[#ffb703]' : 'text-rose-600'
+                    score >= 70 ? 'text-[#ffb703]' : 'text-rose-605'
                   }`}>
                     {placedCount > 0 ? score : '100'}
                   </span>
@@ -1794,7 +1884,7 @@ export const VasthuToolsView: React.FC = () => {
                 
                 <div className="inline-block">
                   <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                    placedCount === 0 ? 'bg-slate-105 text-slate-500' :
+                    placedCount === 0 ? 'bg-slate-105 text-slate-505' :
                     score >= 90 ? 'bg-emerald-50 text-emerald-700' :
                     score >= 70 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
                   }`}>
@@ -1811,7 +1901,7 @@ export const VasthuToolsView: React.FC = () => {
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                   Compliance Feedback Check
                 </h3>
-                <p className="text-xs text-slate-500">Real-time analysis details based on selected room positions.</p>
+                <p className="text-xs text-slate-505">Real-time analysis details based on selected room positions.</p>
               </div>
 
               <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
@@ -1841,7 +1931,7 @@ export const VasthuToolsView: React.FC = () => {
                             {item.points >= 0 ? `+${item.points}` : item.points} pts
                           </span>
                         </div>
-                        <p className="text-slate-650 dark:text-slate-400 font-medium">{item.note}</p>
+                        <p className="text-slate-655 dark:text-slate-400 font-medium">{item.note}</p>
                       </div>
                     </div>
                   ))
@@ -1881,15 +1971,24 @@ export const VasthuToolsView: React.FC = () => {
                 onChange={(e) => setRawTextRequirements(e.target.value)}
                 placeholder="Paste plan requirements here..."
                 rows={5}
-                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-955 dark:text-white"
               />
-              <button
-                onClick={handleParseRequirements}
-                className="w-full bg-[#fb8500] hover:bg-[#e07500] text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-[#fb8500]/10 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Sparkles className="h-4 w-4" />
-                Parse & Generate Plan
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleParseRequirements}
+                  className="flex-1 bg-[#fb8500] hover:bg-[#e07500] text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-[#fb8500]/10 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Parse & Generate Plan
+                </button>
+                <button
+                  onClick={() => setActiveTab('aichat')}
+                  className="px-3 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+                  title="Ask Vastu AI for writing templates"
+                >
+                  <Bot className="h-4 w-4 text-[#fb8500]" />
+                </button>
+              </div>
             </div>
 
             {/* --- AI SPACE FEASIBILITY COMFORT REPORT --- */}
@@ -1897,7 +1996,7 @@ export const VasthuToolsView: React.FC = () => {
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-3.5 animate-in slide-in-from-top duration-250">
                 <div className="flex items-center gap-1.5">
                   <Scale className="h-4.5 w-4.5 text-[#fb8500]" />
-                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white">
+                  <h3 className="text-xs font-black uppercase text-slate-905 dark:text-white">
                     AI Space Feasibility Report
                   </h3>
                 </div>
@@ -1908,7 +2007,7 @@ export const VasthuToolsView: React.FC = () => {
                     <span className="text-[#fb8500]">{feasibility.totalArea} Sft</span>
                   </div>
                   
-                  <div className="flex justify-between items-center font-semibold text-slate-500">
+                  <div className="flex justify-between items-center font-semibold text-slate-550">
                     <span>Min Required Footprint:</span>
                     <span>{feasibility.minFinalNeeded} Sft</span>
                   </div>
@@ -1960,7 +2059,7 @@ export const VasthuToolsView: React.FC = () => {
                     value={plotWidth}
                     onChange={(e) => {
                       setPlotWidth(Math.max(10, parseInt(e.target.value) || 23));
-                      setHasDraftedPlan(true); // manual changes trigger activation
+                      setHasDraftedPlan(true);
                     }}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                   />
@@ -2214,6 +2313,141 @@ export const VasthuToolsView: React.FC = () => {
                 </div>
               </div>
             )}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* --- AI CHATBOT TAB VIEW --- */}
+      {activeTab === 'aichat' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl shadow-xs overflow-hidden flex flex-col md:grid md:grid-cols-12 min-h-[550px] max-w-5xl mx-auto animate-in fade-in duration-200">
+          
+          {/* Quick Help Chips Sidebar (Left on large screens, top on mobile) */}
+          <div className="md:col-span-4 bg-slate-50/50 dark:bg-slate-950/50 p-5 border-b md:border-b-0 md:border-r border-slate-150 dark:border-slate-850 flex flex-col gap-4">
+            <div>
+              <span className="text-[9px] font-black bg-[#fb8500]/10 text-[#fb8500] px-2 py-0.5 rounded-full uppercase tracking-wider">Vastu Intelligence</span>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white mt-1.5">Quick Help Guides</h3>
+              <p className="text-[11px] text-slate-500 leading-normal mt-0.5">Click any standard question chip below to consult the Vastu AI instantly.</p>
+            </div>
+
+            <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 shrink-0">
+              <button 
+                onClick={() => handlePromptChipClick("Where is the best position for Kitchen as per Vastu?")}
+                className="whitespace-nowrap md:whitespace-normal text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[10.5px] font-bold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 transition-colors shadow-2xs hover:border-[#fb8500] cursor-pointer"
+              >
+                🔥 Best Kitchen Location?
+              </button>
+              <button 
+                onClick={() => handlePromptChipClick("Tell me rules for Southwest Master Bedroom.")}
+                className="whitespace-nowrap md:whitespace-normal text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[10.5px] font-bold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 transition-colors shadow-2xs hover:border-[#fb8500] cursor-pointer"
+              >
+                🛌 Southwest Bed Rules?
+              </button>
+              <button 
+                onClick={() => handlePromptChipClick("Why is toilet in Northeast strictly avoided?")}
+                className="whitespace-nowrap md:whitespace-normal text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[10.5px] font-bold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 transition-colors shadow-2xs hover:border-[#fb8500] cursor-pointer"
+              >
+                🚿 NE Toilet Warning?
+              </button>
+              <button 
+                onClick={() => handlePromptChipClick("Give me a copy-paste plan requirement text for 30x40 East Facing plot.")}
+                className="whitespace-nowrap md:whitespace-normal text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-[#fb8500]/5 text-[10.5px] font-bold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 transition-colors shadow-2xs hover:border-[#fb8500] cursor-pointer"
+              >
+                📝 Generate 30x40 Plan Text
+              </button>
+            </div>
+
+            <div className="mt-auto hidden md:block p-3.5 rounded-xl bg-[#fb8500]/5 border border-[#fb8500]/15 text-[10.5px] text-slate-600 leading-relaxed">
+              💡 <b>Did you know?</b> You can copy the generated Vastu text drafts from this chat, paste it directly into the <b>AI Plan Parser</b> on the 2D CAD tab, and compile new plans in seconds!
+            </div>
+          </div>
+
+          {/* Active Chat Conversation Area (Right) */}
+          <div className="md:col-span-8 flex flex-col h-[500px] md:h-[580px] bg-white dark:bg-slate-900">
+            
+            {/* Messages box list */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {chatMessages.map((msg, index) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div 
+                    key={index}
+                    className={`flex items-start gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isUser && (
+                      <div className="h-8.5 w-8.5 rounded-xl bg-gradient-to-br from-[#005198] to-[#219ebc] text-white flex items-center justify-center shadow-sm shrink-0">
+                        <Bot className="h-4.5 w-4.5" />
+                      </div>
+                    )}
+                    
+                    <div className={`p-4 rounded-2xl max-w-[85%] text-xs shadow-2xs leading-relaxed ${
+                      isUser
+                        ? 'bg-gradient-to-r from-[#fb8500] to-[#ffb703] text-white rounded-tr-none'
+                        : 'bg-slate-100 text-slate-850 dark:bg-slate-950 dark:text-slate-200 border border-slate-200/50 dark:border-slate-800 rounded-tl-none'
+                    }`}>
+                      {isUser ? (
+                        <p className="font-semibold">{msg.content}</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {renderMessageContent(msg.content)}
+                        </div>
+                      )}
+                    </div>
+
+                    {isUser && (
+                      <div className="h-8.5 w-8.5 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shadow-xs shrink-0 dark:bg-slate-800 dark:text-slate-300">
+                        <User className="h-4.5 w-4.5" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Pulsing loading helper when API calls are running */}
+              {chatLoading && (
+                <div className="flex items-start gap-2.5 justify-start animate-pulse">
+                  <div className="h-8.5 w-8.5 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    <Bot className="h-4.5 w-4.5 text-slate-400" />
+                  </div>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl rounded-tl-none border border-slate-200/30 text-xs text-slate-400 font-semibold flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-0" />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150" />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-300" />
+                    </div>
+                    Vastu AI is analyzing guidelines...
+                  </div>
+                </div>
+              )}
+              
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input box submit form (Bottom) */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendChatMessage();
+              }}
+              className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 flex gap-2"
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask Vastu Shastra rules (e.g. kitchen location, bedroom, toilet advice)..."
+                disabled={chatLoading}
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              />
+              <button
+                type="submit"
+                disabled={chatLoading || !chatInput.trim()}
+                className="bg-[#fb8500] hover:bg-[#e07500] text-white p-2.5 rounded-xl shadow-md shadow-[#fb8500]/10 transition-colors disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none cursor-pointer"
+              >
+                <Send className="h-4.5 w-4.5" />
+              </button>
+            </form>
 
           </div>
 
