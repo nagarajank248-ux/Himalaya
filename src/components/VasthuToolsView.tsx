@@ -19,7 +19,8 @@ import {
   Building2,
   FileText,
   Sparkles,
-  Maximize
+  Maximize,
+  Scale
 } from 'lucide-react';
 
 type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
@@ -249,7 +250,7 @@ export const VasthuToolsView: React.FC = () => {
   const [includePooja, setIncludePooja] = useState(true);
   const [includeStairs, setIncludeStairs] = useState(true);
   const [includeParking, setIncludeParking] = useState(true);
-  const [includeGarden, setIncludeGarden] = useState(false); // respected strictly
+  const [includeGarden, setIncludeGarden] = useState(false);
 
   // Requirements text parser box
   const [rawTextRequirements, setRawTextRequirements] = useState(
@@ -265,36 +266,142 @@ export const VasthuToolsView: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // AI Requirements parser
+  // AI Requirements parser - BULLETPROOF regex implementation
   const handleParseRequirements = () => {
     const text = rawTextRequirements.toLowerCase();
 
-    const sizeRegex = /(\d+)\s*[\*xX×\s]+\s*(\d+)/;
-    const sizeMatch = rawTextRequirements.match(sizeRegex);
+    // Remove asterisks & punctuation that block parsing
+    const cleanedText = rawTextRequirements.replace(/\*/g, '').replace(/,/g, '').toLowerCase();
+
+    // 1. Matches width and length in formats: "23 x 39", "23x39", "23 by 39", "23*39"
+    const sizeRegex = /(\d+)\s*(?:x|×|by|\*|\s)\s*(\d+)/i;
+    const sizeMatch = cleanedText.match(sizeRegex);
+    
+    let wVal = plotWidth;
+    let lVal = plotLength;
+
     if (sizeMatch) {
-      setPlotWidth(Math.max(10, parseInt(sizeMatch[1])));
-      setPlotLength(Math.max(10, parseInt(sizeMatch[2])));
+      const w = parseInt(sizeMatch[1]);
+      const l = parseInt(sizeMatch[2]);
+      if (!isNaN(w) && w > 10) wVal = w;
+      if (!isNaN(l) && l > 10) lVal = l;
+    } else {
+      // Fallback: search for first 2 standalone numbers in the requirement content
+      const fallbackNumbers = cleanedText.match(/\d+/g);
+      if (fallbackNumbers && fallbackNumbers.length >= 2) {
+        const w = parseInt(fallbackNumbers[0]);
+        const l = parseInt(fallbackNumbers[1]);
+        if (!isNaN(w) && w > 10) wVal = w;
+        if (!isNaN(l) && l > 10) lVal = l;
+      }
     }
 
-    if (text.includes('west')) setPlotFacing('West');
-    else if (text.includes('east')) setPlotFacing('East');
-    else if (text.includes('north')) setPlotFacing('North');
-    else if (text.includes('south')) setPlotFacing('South');
+    setPlotWidth(wVal);
+    setPlotLength(lVal);
 
-    const bedRegex = /(\d+)\s*(bhk|bedroom)/;
-    const bedMatch = text.match(bedRegex);
-    if (bedMatch) {
-      const count = parseInt(bedMatch[1]);
-      if (count === 2 || count === 3) setBedroomCount(count as 2 | 3);
+    // 2. Facing direction
+    if (cleanedText.includes('west')) setPlotFacing('West');
+    else if (cleanedText.includes('east')) setPlotFacing('East');
+    else if (cleanedText.includes('north')) setPlotFacing('North');
+    else if (cleanedText.includes('south')) setPlotFacing('South');
+
+    // 3. Bedroom count scanning
+    if (cleanedText.includes('3 bedroom') || cleanedText.includes('3 bhk') || cleanedText.includes('three bedroom')) {
+      setBedroomCount(3);
+    } else if (cleanedText.includes('2 bedroom') || cleanedText.includes('2 bhk') || cleanedText.includes('two bedroom')) {
+      setBedroomCount(2);
     }
 
-    setIncludePooja(text.includes('pooja') || text.includes('poojai') || text.includes('altar'));
-    setIncludeStairs(text.includes('stair') || text.includes('staircase') || text.includes('steps'));
-    setIncludeParking(text.includes('park') || text.includes('parking') || text.includes('car'));
-    setIncludeGarden(text.includes('garden') || text.includes('garder') || text.includes('thottam'));
+    // 4. Checklist includes
+    setIncludePooja(cleanedText.includes('pooja') || cleanedText.includes('poojai') || cleanedText.includes('altar'));
+    setIncludeStairs(cleanedText.includes('stair') || cleanedText.includes('staircase') || cleanedText.includes('steps'));
+    setIncludeParking(cleanedText.includes('park') || cleanedText.includes('parking') || cleanedText.includes('car') || cleanedText.includes('portico'));
+    setIncludeGarden(cleanedText.includes('garden') || cleanedText.includes('garder') || cleanedText.includes('thottam') || cleanedText.includes('landscaping'));
 
-    addNotification('success', 'Vastu requirements parsed successfully. Blueprint updated!');
+    addNotification('success', `AI Parser Drafted: ${wVal}x${lVal} ft, ${plotFacing} Facing. Blueprint updated!`);
   };
+
+  // --- AI SPACE FEASIBILITY ANALYZER ---
+  const getSpaceFeasibility = () => {
+    const totalArea = plotWidth * plotLength;
+    let requiredArea = 0;
+    const roomBreakdown: { name: string; reqSft: number }[] = [];
+
+    // Master Bed + Bath
+    roomBreakdown.push({ name: 'Master Bedroom', reqSft: 120 });
+    roomBreakdown.push({ name: 'M.Bed Toilet', reqSft: 40 });
+    requiredArea += 160;
+
+    // Bed 2 + Bath
+    roomBreakdown.push({ name: 'Bedroom 2', reqSft: 100 });
+    roomBreakdown.push({ name: 'Bed 2 Toilet', reqSft: 40 });
+    requiredArea += 140;
+
+    // Bed 3 + Bath
+    if (bedroomCount === 3) {
+      roomBreakdown.push({ name: 'Bedroom 3', reqSft: 100 });
+      roomBreakdown.push({ name: 'Bed 3 Toilet', reqSft: 40 });
+      requiredArea += 140;
+    }
+
+    // Kitchen
+    roomBreakdown.push({ name: 'Kitchen Area', reqSft: 80 });
+    requiredArea += 80;
+
+    // Living Hall
+    roomBreakdown.push({ name: 'Living Hall', reqSft: 150 });
+    requiredArea += 150;
+
+    // Dining Area
+    roomBreakdown.push({ name: 'Dining Area', reqSft: 70 });
+    requiredArea += 70;
+
+    // Pooja Room
+    if (includePooja) {
+      roomBreakdown.push({ name: 'Pooja Room', reqSft: 30 });
+      requiredArea += 30;
+    }
+
+    // Staircase
+    if (includeStairs) {
+      roomBreakdown.push({ name: 'Staircase Block', reqSft: 80 });
+      requiredArea += 80;
+    }
+
+    // Parking Portico
+    if (includeParking) {
+      roomBreakdown.push({ name: 'Car Parking Portico', reqSft: 130 });
+      requiredArea += 130;
+    }
+
+    // Garden
+    if (includeGarden) {
+      roomBreakdown.push({ name: 'Garden Zone', reqSft: 60 });
+      requiredArea += 60;
+    }
+
+    // Add 15% circulation margin for walls, corridors, and doors
+    const circulation = Math.round(requiredArea * 0.15);
+    const minFinalNeeded = requiredArea + circulation;
+
+    let status: 'feasible' | 'tight' | 'overloaded' = 'feasible';
+    if (totalArea < minFinalNeeded * 0.85) {
+      status = 'overloaded';
+    } else if (totalArea < minFinalNeeded) {
+      status = 'tight';
+    }
+
+    return {
+      totalArea,
+      requiredArea,
+      minFinalNeeded,
+      circulation,
+      roomBreakdown,
+      status
+    };
+  };
+
+  const feasibility = getSpaceFeasibility();
 
   const generateRoomsList = (W: number, L: number, facing: 'East' | 'West' | 'North' | 'South', bedCount: number): RoomPlan[] => {
     const list: RoomPlan[] = [];
@@ -428,7 +535,7 @@ export const VasthuToolsView: React.FC = () => {
           isVastuDoor: true
         });
       } else if (includeParking) {
-        // If garden not requested, parking occupies full Northwest front row width
+        // If garden not requested, parking portico occupies full Northwest front row width
         const parkW = includeGarden ? Math.round(leftW * 0.65) : leftW;
         list.push({
           name: 'Portico',
@@ -603,39 +710,31 @@ export const VasthuToolsView: React.FC = () => {
     const bx = rx + (rw - bW) / 2;
     const by = ry + 6;
 
-    // Bed frame
     ctx.strokeRect(bx, by, bW, bH);
     ctx.strokeRect(bx - 1.5, by - 1.5, bW + 3, bH + 3);
-    ctx.strokeRect(bx, by, bW, bH * 0.12); // Headboard
+    ctx.strokeRect(bx, by, bW, bH * 0.12); 
     
-    // Pillows
     const pW = bW * 0.38;
     const pH = bH * 0.18;
     ctx.strokeRect(bx + (bW * 0.08), by + (bH * 0.16), pW, pH);
     ctx.strokeRect(bx + (bW * 0.54), by + (bH * 0.16), pW, pH);
 
-    // Blanket creases
     ctx.strokeRect(bx, by + (bH * 0.44), bW, bH * 0.56);
     ctx.beginPath();
     ctx.moveTo(bx, by + (bH * 0.48));
     ctx.bezierCurveTo(bx + (bW * 0.25), by + (bH * 0.44), bx + (bW * 0.75), by + (bH * 0.52), bx + bW, by + (bH * 0.48));
     ctx.stroke();
 
-    // DRAW 2 REALISTIC SIDE TABLES WITH LAMPS ON SIDES OF BED
     const tableW = Math.round(bW * 0.2);
     const tableH = Math.round(bH * 0.2);
-    // Left side table
     ctx.strokeRect(bx - tableW - 3, by, tableW, tableH);
     ctx.strokeRect(bx - tableW - 1, by + 2, tableW - 4, tableH - 4);
-    // Lamp circle left
     ctx.beginPath();
     ctx.arc(bx - (tableW / 2) - 3, by + (tableH / 2), 2, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Right side table
     ctx.strokeRect(bx + bW + 3, by, tableW, tableH);
     ctx.strokeRect(bx + bW + 5, by + 2, tableW - 4, tableH - 4);
-    // Lamp circle right
     ctx.beginPath();
     ctx.arc(bx + bW + (tableW / 2) + 3, by + (tableH / 2), 2, 0, Math.PI * 2);
     ctx.stroke();
@@ -662,7 +761,7 @@ export const VasthuToolsView: React.FC = () => {
     ctx.stroke();
 
     ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.22), cW * 0.76, cH * 0.12);
-    ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.68), cW * 0.76, cH * 0.08); // back screen
+    ctx.strokeRect(cx + (cW * 0.12), cy + (cH * 0.68), cW * 0.76, cH * 0.08); 
 
     ctx.beginPath();
     ctx.moveTo(cx + (cW * 0.25), cy); ctx.lineTo(cx + (cW * 0.25), cy + (cH * 0.22));
@@ -715,24 +814,20 @@ export const VasthuToolsView: React.FC = () => {
     const tx = rx + (rw - tW) / 2;
     const ty = ry + (rh - tH) / 2;
     
-    ctx.strokeRect(tx, ty, tW, tH); // rectangular table
+    ctx.strokeRect(tx, ty, tW, tH);
 
-    // Draw circular plates on table
     ctx.beginPath();
     ctx.arc(tx + (tW * 0.25), ty + (tH / 2), 2.5, 0, Math.PI * 2);
     ctx.arc(tx + (tW * 0.75), ty + (tH / 2), 2.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Chairs with rounded backs
     const chairsX = [tx - 5, tx + tW];
     chairsX.forEach((cx) => {
-      // chair 1
       ctx.strokeRect(cx, ty + (tH * 0.15), 5, tH * 0.22);
       ctx.beginPath();
       ctx.arc(cx + (cx === tx - 5 ? 0 : 5), ty + (tH * 0.26), 2, -Math.PI/2, Math.PI/2);
       ctx.stroke();
 
-      // chair 2
       ctx.strokeRect(cx, ty + (tH * 0.62), 5, tH * 0.22);
       ctx.beginPath();
       ctx.arc(cx + (cx === tx - 5 ? 0 : 5), ty + (tH * 0.73), 2, -Math.PI/2, Math.PI/2);
@@ -756,11 +851,10 @@ export const VasthuToolsView: React.FC = () => {
     ctx.arc(stX + 16.5, stY + 2.75, 1.8, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Kitchen wash sink with detailed water faucet
     ctx.strokeRect(rx + 2, ry + (rh * 0.48), 6.5, 13);
     ctx.beginPath();
     ctx.moveTo(rx + 5, ry + (rh * 0.48));
-    ctx.lineTo(rx + 5, ry + (rh * 0.48) + 3); // faucet pipe
+    ctx.lineTo(rx + 5, ry + (rh * 0.48) + 3); 
     ctx.stroke();
   };
 
@@ -803,10 +897,8 @@ export const VasthuToolsView: React.FC = () => {
     const cx = tx + (tw / 2);
     const cy = ty + (th * 0.65);
 
-    // Flush tank outline
     ctx.strokeRect(cx - 5.5, cy - 8, 11, 3.5);
     
-    // Oval commode bowl
     ctx.beginPath();
     if (ctx.ellipse) {
       ctx.ellipse(cx, cy - 1, 4.5, 6, 0, 0, Math.PI * 2);
@@ -815,14 +907,12 @@ export const VasthuToolsView: React.FC = () => {
     }
     ctx.stroke();
 
-    // Inner seat line
     ctx.beginPath();
     if (ctx.ellipse) {
       ctx.ellipse(cx, cy - 1, 3, 4.2, 0, 0, Math.PI * 2);
     }
     ctx.stroke();
 
-    // Washbasin corner outline in NE corner of toilet
     ctx.beginPath();
     ctx.moveTo(tx, ty);
     ctx.lineTo(tx + 7, ty);
@@ -834,7 +924,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.stroke();
   };
 
-  // concrete/gray solid hatching for building walls
   const drawThickWalls = (ctx: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number, thick: number = 4) => {
     ctx.strokeStyle = '#11151c'; 
     ctx.lineWidth = 1.0;
@@ -842,12 +931,11 @@ export const VasthuToolsView: React.FC = () => {
     ctx.strokeRect(rx, ry, rw, rh);
     ctx.strokeRect(rx + thick, ry + thick, rw - (thick * 2), rh - (thick * 2));
     
-    // Fill the inner wall spacing (gray concrete hatch)
     ctx.fillStyle = '#e2e8f0'; 
-    ctx.fillRect(rx + 0.5, ry + 0.5, rw - 1, thick - 1); // top
-    ctx.fillRect(rx + 0.5, ry + rh - thick + 0.5, rw - 1, thick - 1); // bottom
-    ctx.fillRect(rx + 0.5, ry + thick, thick - 1, rh - (thick * 2)); // left
-    ctx.fillRect(rx + rw - thick + 0.5, ry + thick, thick - 1, rh - (thick * 2)); // right
+    ctx.fillRect(rx + 0.5, ry + 0.5, rw - 1, thick - 1); 
+    ctx.fillRect(rx + 0.5, ry + rh - thick + 0.5, rw - 1, thick - 1); 
+    ctx.fillRect(rx + 0.5, ry + thick, thick - 1, rh - (thick * 2)); 
+    ctx.fillRect(rx + rw - thick + 0.5, ry + thick, thick - 1, rh - (thick * 2)); 
   };
 
   const drawFloorPlan = () => {
@@ -859,7 +947,7 @@ export const VasthuToolsView: React.FC = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    ctx.scale(4, 4); // 4x density upscaling for retina crisp vector exports!
+    ctx.scale(4, 4); // 4x density for razor-sharp layouts
 
     const pad = 35;
     const cw = 500 - (pad * 2); 
@@ -878,23 +966,19 @@ export const VasthuToolsView: React.FC = () => {
 
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-    // DRAW PURE WHITE PAPER SHEET BACKGROUND
     ctx.fillStyle = '#ffffff'; 
     ctx.fillRect(0, 0, 500, 660);
 
-    // Outer double borders (Royal Blue `#005198`)
     ctx.strokeStyle = '#005198'; 
     ctx.lineWidth = 2.5;
     ctx.strokeRect(5, 5, 490, 650);
     ctx.lineWidth = 0.8;
     ctx.strokeRect(8, 8, 484, 644);
 
-    // Plot boundaries (Black outline)
     ctx.strokeStyle = '#11151c'; 
     ctx.lineWidth = 2;
     ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
 
-    // 2. Draw partitions with double wall hatching & detailed furniture
     rooms.forEach((room) => {
       const rx = transX(room.x);
       const ry = transY(room.y);
@@ -904,10 +988,8 @@ export const VasthuToolsView: React.FC = () => {
       ctx.fillStyle = '#ffffff'; 
       ctx.fillRect(rx, ry, rw, rh);
 
-      // --- Draw Concrete Hatched Double Walls ---
       drawThickWalls(ctx, rx, ry, rw, rh, 4);
 
-      // Components
       const innerX = rx + 4;
       const innerY = ry + 4;
       const innerW = rw - 8;
@@ -929,7 +1011,6 @@ export const VasthuToolsView: React.FC = () => {
         drawPoojaBlock(ctx, innerX, innerY, innerW, innerH);
       }
 
-      // Toilets with detailed toilet bowl layout commodes
       if (room.attachedToilet) {
         const tx = transX(room.attachedToilet.x);
         const ty = transY(room.attachedToilet.y);
@@ -940,14 +1021,12 @@ export const VasthuToolsView: React.FC = () => {
         ctx.fillRect(tx, ty, tw, th);
         drawThickWalls(ctx, tx, ty, tw, th, 3.5);
 
-        // Commode block drawing
         const toiletX = tx + 3.5;
         const toiletY = ty + 3.5;
         const toiletW = tw - 7;
         const toiletH = th - 7;
         drawToiletCommode(ctx, toiletX, toiletY, toiletW, toiletH);
 
-        // Toilet labels
         ctx.fillStyle = '#11151c';
         ctx.font = 'bold 7.5px sans-serif';
         ctx.textAlign = 'center';
@@ -956,7 +1035,6 @@ export const VasthuToolsView: React.FC = () => {
         ctx.fillText("5'x11'2.5\"", tx + (tw / 2), ty + 20);
       }
 
-      // Staircase steps
       if (room.type === 'staircase') {
         ctx.strokeStyle = '#005198';
         ctx.lineWidth = 0.8;
@@ -970,7 +1048,6 @@ export const VasthuToolsView: React.FC = () => {
         ctx.fillText('UP ➔', rx + (rw / 2), ry + (rh / 2));
       }
 
-      // Room labels
       ctx.fillStyle = '#11151c'; 
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
@@ -979,12 +1056,10 @@ export const VasthuToolsView: React.FC = () => {
       const labelY = room.attachedToilet ? ry + (rh * 0.35) : ry + (rh / 2);
       ctx.fillText(room.name, rx + (rw / 2), labelY);
 
-      // Red sizes text
       ctx.fillStyle = '#ef4444'; 
       ctx.font = 'bold 9px sans-serif';
       ctx.fillText(`${room.w}'x${room.h}'`, rx + (rw / 2), labelY + 12);
 
-      // --- VASTHU DOOR SYMBOLS: RED CIRCLE + HINGE SWING + VASTHU HALO ---
       if (room.doorWall && room.doorPos !== undefined) {
         const doorSize = scaleFeet(2.8); 
         let dx = rx;
@@ -1004,7 +1079,6 @@ export const VasthuToolsView: React.FC = () => {
           dy = ry + (rh * room.doorPos);
         }
 
-        // Green leaf swing
         ctx.strokeStyle = '#22c55e'; 
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -1027,7 +1101,6 @@ export const VasthuToolsView: React.FC = () => {
         }
         ctx.stroke();
 
-        // Hinge circle (red)
         ctx.fillStyle = '#ef4444'; 
         ctx.beginPath();
         ctx.arc(dx, dy, 7, 0, Math.PI * 2);
@@ -1041,7 +1114,6 @@ export const VasthuToolsView: React.FC = () => {
                           room.type === 'pooja' ? 'D2' : 'MD';
         ctx.fillText(doorLabel, dx, dy);
 
-        // --- DRAW GREEN GLOW HALO AROUND VASTHU COMPLIANT DOORS ---
         if (room.isVastuDoor) {
           ctx.strokeStyle = '#22c55e';
           ctx.lineWidth = 1.0;
@@ -1049,14 +1121,12 @@ export const VasthuToolsView: React.FC = () => {
           ctx.arc(dx, dy, 11, 0, Math.PI * 2);
           ctx.stroke();
           
-          // Tiny label text
           ctx.fillStyle = '#22c55e';
           ctx.font = 'bold 5.5px sans-serif';
           ctx.fillText('VASTHU OK', dx, dy - 13);
         }
       }
 
-      // Windows
       if (room.windowWalls) {
         ctx.strokeStyle = '#005198'; 
         ctx.lineWidth = 2.5;
@@ -1082,11 +1152,9 @@ export const VasthuToolsView: React.FC = () => {
       }
     });
 
-    // 3. Draw Plot dimensions arrowlines
     drawDimensionLine(ctx, offsetX, offsetY - 18, offsetX + scaleFeet(plotWidth), offsetY - 18, `${plotWidth}'0"`);
     drawDimensionLine(ctx, offsetX - 18, offsetY + scaleFeet(plotLength), offsetX - 18, offsetY, `${plotLength}'0"`);
 
-    // 4. North Direction Arrow Indicator
     const navX = 40;
     const navY = 40;
     ctx.strokeStyle = '#005198';
@@ -1107,19 +1175,16 @@ export const VasthuToolsView: React.FC = () => {
     ctx.font = 'bold 8.5px sans-serif';
     ctx.fillText('N', navX, navY - 16);
 
-    // Label road facing direction
     ctx.fillStyle = '#ef4444';
     ctx.font = 'bold 9.5px sans-serif';
     ctx.fillText(`⚡ ${plotFacing.toUpperCase()} FACING ROAD ACCESS ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
 
-    // --- 5. DRAW BLUEPRINT TITLE BLOCK TABLE (bottom from y = 490 to y = 645 in royal blue) ---
     const tY = 490;
     ctx.strokeStyle = '#005198'; 
     ctx.lineWidth = 2.5;
     ctx.strokeRect(12, tY, 476, 150);
     ctx.strokeRect(14, tY + 2, 472, 146);
 
-    // Draw Column Dividers
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(110, tY + 2); ctx.lineTo(110, tY + 148);
@@ -1128,7 +1193,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.moveTo(410, tY + 2); ctx.lineTo(410, tY + 148);
     ctx.stroke();
 
-    // Box 1 details (CONSTRUCTION & CLIENT)
     ctx.fillStyle = '#005198';
     ctx.textAlign = 'left';
     ctx.font = 'bold 8.5px sans-serif';
@@ -1144,7 +1208,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.font = 'normal 8.5px sans-serif';
     ctx.fillText(clientName.toUpperCase(), 18, tY + 95);
 
-    // Box 2 details (JOINERIES DETAILS Table)
     ctx.fillStyle = '#005198';
     ctx.font = 'bold 8.5px sans-serif';
     ctx.textAlign = 'center';
@@ -1165,7 +1228,6 @@ export const VasthuToolsView: React.FC = () => {
       ctx.fillText(row, 115, tY + 32 + (i * 18));
     });
 
-    // Box 3 details (TOTAL AREA & COMPASS)
     ctx.fillStyle = '#005198';
     ctx.textAlign = 'center';
     ctx.font = 'bold 8.5px sans-serif';
@@ -1176,7 +1238,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.fillStyle = '#ef4444'; 
     ctx.fillText(`${(plotWidth * plotLength * 0.85).toFixed(2)} Sqft`, 265, tY + 50);
 
-    // Compass rose
     const cX = 265;
     const cY = tY + 100;
     ctx.strokeStyle = '#005198';
@@ -1193,7 +1254,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.closePath();
     ctx.fill();
 
-    // Box 4 details (DRAWING TITLE & DWG INFO)
     ctx.fillStyle = '#005198';
     ctx.textAlign = 'left';
     ctx.font = 'bold 8px sans-serif';
@@ -1209,7 +1269,6 @@ export const VasthuToolsView: React.FC = () => {
     ctx.fillText(`SCALE: ${scaleLabel}`, 315, tY + 90);
     ctx.fillText(`DWG NO: ${dwgNo.toUpperCase()}`, 315, tY + 110);
 
-    // Box 5 details (SIGNATURES BLOCK)
     ctx.fillStyle = '#005198';
     ctx.font = 'bold 8px sans-serif';
     ctx.fillText('CHECKED BY:', 415, tY + 15);
@@ -1264,7 +1323,7 @@ export const VasthuToolsView: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Use PNG (lossless format) at A4 scaling for absolute laser-sharp output quality
+    // Lossless PNG format for crisp vector clarity
     const imgData = canvas.toDataURL('image/png', 1.0);
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -1274,7 +1333,6 @@ export const VasthuToolsView: React.FC = () => {
 
     pdf.setFillColor(255, 255, 255);
     pdf.rect(0, 0, 540, 700, 'F');
-    // Draw high-resolution png to prevent blurriness/pixelation
     pdf.addImage(imgData, 'PNG', 20, 20, 500, 660);
 
     pdf.save(`Himalaya_CAD_Blueprint_${clientName}_${plotWidth}x${plotLength}.pdf`);
@@ -1782,6 +1840,54 @@ export const VasthuToolsView: React.FC = () => {
               </button>
             </div>
 
+            {/* --- AI SPACE FEASIBILITY COMFORT REPORT --- */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-3.5">
+              <div className="flex items-center gap-1.5">
+                <Scale className="h-4.5 w-4.5 text-[#fb8500]" />
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white">
+                  AI Space Feasibility Report
+                </h3>
+              </div>
+
+              <div className="p-3.5 rounded-xl border text-xs flex flex-col gap-2.5 justify-between leading-normal bg-slate-50 dark:bg-slate-950 dark:border-slate-850">
+                <div className="flex justify-between items-center font-bold">
+                  <span>Available Area:</span>
+                  <span className="text-[#fb8500]">{feasibility.totalArea} Sft</span>
+                </div>
+                
+                <div className="flex justify-between items-center font-semibold text-slate-500">
+                  <span>Min Required Footprint:</span>
+                  <span>{feasibility.minFinalNeeded} Sft</span>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between items-center">
+                  <span className="font-bold">Comfort Rating:</span>
+                  <span className={`px-2 py-0.5 rounded font-black text-[10px] uppercase ${
+                    feasibility.status === 'feasible' 
+                      ? 'bg-emerald-50 text-emerald-700' 
+                      : feasibility.status === 'tight'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-rose-50 text-rose-700'
+                  }`}>
+                    {feasibility.status === 'feasible' && '🟢 Feasible (Comfortable)'}
+                    {feasibility.status === 'tight' && '🟡 Tight Space (Compact Fit)'}
+                    {feasibility.status === 'overloaded' && '🔴 Overloaded (Too Tight!)'}
+                  </span>
+                </div>
+
+                {feasibility.status === 'overloaded' && (
+                  <div className="mt-1 bg-rose-50/50 dark:bg-rose-950/10 p-2.5 rounded-lg border border-rose-100 text-[10px] text-rose-800 leading-normal font-semibold">
+                    ⚠️ <b>Vastu Recommendation:</b> This plot size ({feasibility.totalArea} Sft) is too small to fit all requested rooms on a single floor. We highly recommend either a <b>Double Floor (G+1) design</b> or reducing the bedroom count.
+                  </div>
+                )}
+                {feasibility.status === 'tight' && (
+                  <div className="mt-1 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100 text-[10px] text-amber-800 leading-normal font-semibold">
+                    ℹ️ <b>Space Note:</b> Close fit! Recommend using compact sliding doors and optimized cupboard placements to maintain circulation space.
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Plot settings */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
               <div>
@@ -2000,13 +2106,13 @@ export const VasthuToolsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Canvas Wrapper (High resolution upscaled canvas) */}
+            {/* Canvas Wrapper */}
             <div className="border border-slate-200 dark:border-slate-800 bg-[#ffffff] rounded-2xl p-2.5 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
               <canvas
                 ref={canvasRef}
-                width={2000} // 4x of 500 for maximum pixel clarity on zoom!
-                height={2640} // 4x of 660
-                style={{ width: '500px', height: '660px' }} // locked aspect ratio
+                width={2000} 
+                height={2640} 
+                style={{ width: '500px', height: '660px' }} 
                 className="max-w-full block rounded-xl border border-slate-250 bg-white"
               />
             </div>
