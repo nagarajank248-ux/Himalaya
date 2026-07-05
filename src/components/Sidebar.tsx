@@ -63,11 +63,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setTab, isOpen, se
         {/* Header / Logo */}
         <div className="flex h-16 items-center justify-between px-6 border-b border-blue-900">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20">
-              <Users className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold text-white tracking-tight">
-              Builder<span className="text-amber-500">CRM</span>
+            <img 
+              src="/app_icon.jpg" 
+              alt="Himalaya Logo" 
+              className="h-9 w-9 rounded-lg object-cover shadow-md shadow-[#fb8500]/10 border border-[#219ebc]/30"
+            />
+            <span className="text-base font-bold text-white tracking-tight">
+              Himalaya<span className="text-amber-500">Vasthu</span>
             </span>
           </div>
           <button 
