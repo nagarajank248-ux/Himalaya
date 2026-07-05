@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Layout,
   Download,
-  Building2
+  Building2,
+  FileText
 } from 'lucide-react';
 
 type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
@@ -90,24 +91,23 @@ const ROOM_OPTIONS = [
   'Entrance'
 ];
 
-// --- 2D Plan Data Structures ---
 interface AttachedToilet {
   name: string;
-  x: number; // feet
-  y: number; // feet
-  w: number; // feet
-  h: number; // feet
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 interface RoomPlan {
   name: string;
-  x: number; // feet
-  y: number; // feet
-  w: number; // feet
-  h: number; // feet
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   type: string;
   doorWall?: 'top' | 'bottom' | 'left' | 'right';
-  doorPos?: number; // ratio 0 to 1
+  doorPos?: number;
   windowWalls?: ('top' | 'bottom' | 'left' | 'right')[];
   attachedToilet?: AttachedToilet;
   vastuNotes: string;
@@ -126,7 +126,6 @@ export const VasthuToolsView: React.FC = () => {
   // Rotate handler
   const angle = isTracking ? heading : manualAngle;
 
-  // Sync angle to selected direction sector
   useEffect(() => {
     const normalized = (360 - (angle % 360)) % 360;
     let dir: Direction = 'N';
@@ -143,7 +142,6 @@ export const VasthuToolsView: React.FC = () => {
     setSelectedDirection(dir);
   }, [angle]);
 
-  // Activate device compass listeners
   const startCompassTracking = async () => {
     if (typeof window === 'undefined') return;
 
@@ -198,7 +196,6 @@ export const VasthuToolsView: React.FC = () => {
     addNotification('success', 'Planner grid reset.');
   };
 
-  // Calculate Vasthu Score
   const calculateVasthuScore = () => {
     let score = 100;
     let placedRooms = 0;
@@ -211,10 +208,10 @@ export const VasthuToolsView: React.FC = () => {
       
       if (dir === 'C') {
         if (room === 'Living Room' || room === 'Entrance') {
-          details.push({ direction: dir, room, status: 'acceptable', points: 0, note: 'Brahmasthan (Center) is open/living hall. Acceptable.' });
+          details.push({ direction: dir, room, status: 'acceptable', points: 0, note: 'Brahmasthan (Center) is open. Acceptable.' });
         } else {
           score -= 20;
-          details.push({ direction: dir, room, status: 'avoid', points: -20, note: 'Brahmasthan (Center) should remain open. Avoid toilets/kitchens.' });
+          details.push({ direction: dir, room, status: 'avoid', points: -20, note: 'Brahmasthan (Center) should remain open. Avoid heavy rooms.' });
         }
         return;
       }
@@ -241,7 +238,7 @@ export const VasthuToolsView: React.FC = () => {
 
   const { score, details, placedCount } = calculateVasthuScore();
 
-  // --- 2D Floor Plan Generator States ---
+  // --- 2D Floor Plan Blueprint Creator ---
   const [plotWidth, setPlotWidth] = useState(23);
   const [plotLength, setPlotLength] = useState(39);
   const [plotFacing, setPlotFacing] = useState<'East' | 'West' | 'North' | 'South'>('West');
@@ -250,13 +247,19 @@ export const VasthuToolsView: React.FC = () => {
   const [includeStairs, setIncludeStairs] = useState(true);
   const [includeParking, setIncludeParking] = useState(true);
 
+  // Blueprint Metadata inputs matching Sample 2pdf.pdf
+  const [clientName, setClientName] = useState('AMMU');
+  const [constructionType, setConstructionType] = useState('RESIDENTIAL');
+  const [drawingTitle, setDrawingTitle] = useState('GROUND FLOOR PLAN');
+  const [dwgNo, setDwgNo] = useState('HVD-2026-002');
+  const [scaleLabel, setScaleLabel] = useState('1:100');
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Generate Vastu Compliant 2D Room Coordinates
   const generateRoomsList = (W: number, L: number, facing: 'East' | 'West' | 'North' | 'South', bedCount: number): RoomPlan[] => {
     const list: RoomPlan[] = [];
     
-    // Column and Row spacing calculations
+    // Grid layout proportions
     const leftW = Math.round(W * 0.52);
     const rightW = W - leftW;
     
@@ -265,14 +268,7 @@ export const VasthuToolsView: React.FC = () => {
     const frontH = L - rearH - midH;
 
     if (facing === 'West') {
-      // West road is at bottom (y = L). East is rear (y = 0).
-      // Left side is North (x = 0). Right side is South (x = W).
-      // NE (Top-Left): Puja Room / Bedroom
-      // SE (Top-Right): Kitchen
-      // SW (Bottom-Right): Master Bedroom
-      // NW (Bottom-Left): Entrance / Parking / Stairs
-
-      // 1. Kitchen (SE - Top Right)
+      // Agneya Kitchen (SE - Top Right), Ishanya Pooja (NE - Top Left)
       list.push({
         name: 'KITCHEN',
         x: leftW,
@@ -286,7 +282,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'SE Agneya Fire Zone - Ideal location.'
       });
 
-      // 2. Pooja Room & study (NE - Top Left)
       const poojaW = Math.round(leftW * 0.45);
       if (includePooja) {
         list.push({
@@ -303,7 +298,6 @@ export const VasthuToolsView: React.FC = () => {
         });
       }
 
-      // 3. Bedroom 2 (Northeast quadrant - Center rear)
       list.push({
         name: 'BEDROOM 2',
         x: includePooja ? poojaW : 0,
@@ -321,10 +315,9 @@ export const VasthuToolsView: React.FC = () => {
           w: Math.round(leftW * 0.35),
           h: rearH - Math.round(rearH * 0.7)
         },
-        vastuNotes: 'N/NE Zone - Good for children/guest room.'
+        vastuNotes: 'N/NE Zone - Good placement.'
       });
 
-      // 4. Living Hall (West/Northwest - Center Left)
       list.push({
         name: 'LIVING HALL',
         x: 0,
@@ -333,12 +326,11 @@ export const VasthuToolsView: React.FC = () => {
         h: midH,
         type: 'living',
         doorWall: 'bottom',
-        doorPos: 0.15, // Main entrance door opens from parking
+        doorPos: 0.15,
         windowWalls: ['left'],
         vastuNotes: 'North/West - Central welcoming hall.'
       });
 
-      // 5. Dining Area (Center South - Center Right)
       list.push({
         name: 'DINING AREA',
         x: leftW,
@@ -350,7 +342,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'South/East center - Close to kitchen.'
       });
 
-      // 6. Master Bedroom (SW - Bottom Right)
       const mBedH = frontH;
       list.push({
         name: 'MASTER BEDROOM',
@@ -372,7 +363,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'SW Nairutya Stability Zone - Owner\'s bedroom.'
       });
 
-      // 7. Parking / Bedroom 3 (NW - Bottom Left)
       if (bedCount === 3) {
         list.push({
           name: 'BEDROOM 3',
@@ -391,7 +381,7 @@ export const VasthuToolsView: React.FC = () => {
             w: Math.round(leftW * 0.35),
             h: Math.round(frontH * 0.45)
           },
-          vastuNotes: 'NW Vayu Zone - Excellent guest/children bedroom.'
+          vastuNotes: 'NW Vayu Zone - Excellent guest bedroom.'
         });
       } else if (includeParking) {
         list.push({
@@ -406,7 +396,6 @@ export const VasthuToolsView: React.FC = () => {
         });
       }
 
-      // 8. Staircase (West center - NW sector)
       if (includeStairs) {
         list.push({
           name: 'STAIRCASE',
@@ -420,8 +409,7 @@ export const VasthuToolsView: React.FC = () => {
       }
 
     } else {
-      // General default layout for East/North/South facing
-      // 1. Kitchen (SE - Bottom Right)
+      // Fallback Vastu plan coordinates
       list.push({
         name: 'KITCHEN',
         x: leftW,
@@ -435,7 +423,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'Agneya Fire Corner - Traditional layout.'
       });
 
-      // 2. Master Bed (SW - Top Left)
       list.push({
         name: 'MASTER BEDROOM',
         x: 0,
@@ -456,7 +443,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'SW Nairutya corner - High stability bedroom.'
       });
 
-      // 3. Pooja (NE - Bottom Left or Top Right depending on entry)
       if (includePooja) {
         list.push({
           name: 'POOJA',
@@ -472,7 +458,6 @@ export const VasthuToolsView: React.FC = () => {
         });
       }
 
-      // 4. Living Hall (Center Center)
       list.push({
         name: 'LIVING HALL',
         x: 0,
@@ -486,7 +471,6 @@ export const VasthuToolsView: React.FC = () => {
         vastuNotes: 'Central Brahmasthan connection - Open.'
       });
 
-      // 5. Bedroom 2 (NW - Bottom Left)
       list.push({
         name: 'BEDROOM 2',
         x: 0,
@@ -511,7 +495,6 @@ export const VasthuToolsView: React.FC = () => {
     return list;
   };
 
-  // Render 2D Floor Plan Canvas Drawing
   const drawFloorPlan = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -522,16 +505,15 @@ export const VasthuToolsView: React.FC = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Padding settings
-    const pad = 40;
+    const pad = 35;
     const cw = canvas.width - (pad * 2);
-    const ch = canvas.height - (pad * 2);
+    // Draw layout area within top 460px height, leave rest for blueprint title table
+    const ch = 460 - (pad * 2);
 
-    // Scaling calculations
     const scaleX = cw / plotWidth;
     const scaleY = ch / plotLength;
     const scale = Math.min(scaleX, scaleY);
 
-    // Center offsets
     const offsetX = pad + (cw - (plotWidth * scale)) / 2;
     const offsetY = pad + (ch - (plotLength * scale)) / 2;
 
@@ -539,17 +521,24 @@ export const VasthuToolsView: React.FC = () => {
     const transX = (ftX: number) => offsetX + scaleFeet(ftX);
     const transY = (ftY: number) => offsetY + scaleFeet(ftY);
 
-    // Generate room list
     const rooms = generateRoomsList(plotWidth, plotLength, plotFacing, bedroomCount);
 
-    // 1. Draw outer boundary / Road
-    ctx.strokeStyle = '#364156'; // Charcoal Blue
-    ctx.lineWidth = 5;
-    ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
+    // 1. Draw outer boundary / Background
+    ctx.fillStyle = '#fffdfa'; // White blueprint sheet background
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#023047'; // Dark space blue main grid borders
+    ctx.lineWidth = 4;
+    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(9, 9, canvas.width - 18, canvas.height - 18);
 
     // Fill plot background lightly
-    ctx.fillStyle = '#fffcf7'; // Soft cream
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
+    ctx.strokeStyle = '#023047';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(offsetX, offsetY, scaleFeet(plotWidth), scaleFeet(plotLength));
 
     // 2. Draw room partitions
     rooms.forEach((room) => {
@@ -558,20 +547,19 @@ export const VasthuToolsView: React.FC = () => {
       const rw = scaleFeet(room.w);
       const rh = scaleFeet(room.h);
 
-      // Color fills according to room type
-      if (room.type === 'kitchen') ctx.fillStyle = '#fef3c7'; // agni flame tint
-      else if (room.type === 'pooja') ctx.fillStyle = '#ffedd5'; // spiritual orange tint
-      else if (room.type === 'master') ctx.fillStyle = '#ecfdf5'; // stable green tint
-      else if (room.type === 'living') ctx.fillStyle = '#f0f9ff'; // open air tint
-      else if (room.type === 'parking') ctx.fillStyle = '#f3f4f6'; // parking gray
-      else if (room.type === 'staircase') ctx.fillStyle = '#fff7ed';
-      else ctx.fillStyle = '#fffbf5'; // standard room
+      if (room.type === 'kitchen') ctx.fillStyle = '#fffbeb'; 
+      else if (room.type === 'pooja') ctx.fillStyle = '#fff7ed'; 
+      else if (room.type === 'master') ctx.fillStyle = '#f0fdf4'; 
+      else if (room.type === 'living') ctx.fillStyle = '#f0f9ff'; 
+      else if (room.type === 'parking') ctx.fillStyle = '#f9fafb'; 
+      else if (room.type === 'staircase') ctx.fillStyle = '#fafaf9';
+      else ctx.fillStyle = '#ffffff'; 
 
       ctx.fillRect(rx, ry, rw, rh);
 
       // Draw Room Walls
-      ctx.strokeStyle = '#219ebc'; // Blue Green walls
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#219ebc'; // Teal blue walls
+      ctx.lineWidth = 2;
       ctx.strokeRect(rx, ry, rw, rh);
 
       // Draw attached toilets
@@ -581,13 +569,12 @@ export const VasthuToolsView: React.FC = () => {
         const tw = scaleFeet(room.attachedToilet.w);
         const th = scaleFeet(room.attachedToilet.h);
 
-        ctx.fillStyle = '#f5f3ff'; // violet toilet tint
+        ctx.fillStyle = '#f5f3ff'; 
         ctx.fillRect(tx, ty, tw, th);
         ctx.strokeRect(tx, ty, tw, th);
 
-        // Toilet labels
-        ctx.fillStyle = '#11151c';
-        ctx.font = 'bold 9px sans-serif';
+        ctx.fillStyle = '#023047';
+        ctx.font = 'bold 8px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(room.attachedToilet.name, tx + (tw / 2), ty + (th / 2));
@@ -602,34 +589,31 @@ export const VasthuToolsView: React.FC = () => {
         for (let i = 0; i < stepsCount; i++) {
           ctx.strokeRect(rx + (i * stepW), ry, stepW, rh);
         }
-        // Draw directional text
         ctx.fillStyle = '#fb8500';
         ctx.font = 'bold 8px sans-serif';
         ctx.fillText('UP ➔', rx + (rw / 2), ry + (rh / 2));
       }
 
       // Room labels & Dimensions
-      ctx.fillStyle = '#023047'; // Deep space blue labels
+      ctx.fillStyle = '#023047'; 
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
-      // Label text
       const labelY = room.attachedToilet ? ry + (rh * 0.35) : ry + (rh / 2);
       ctx.fillText(room.name, rx + (rw / 2), labelY);
 
-      // Dimension text (e.g. 11'0" x 13'0")
-      ctx.fillStyle = '#798390'; // Charcoal text
+      ctx.fillStyle = '#798390'; 
       ctx.font = 'normal 9px sans-serif';
-      ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 14);
+      ctx.fillText(`${room.w}'0" x ${room.h}'0"`, rx + (rw / 2), labelY + 13);
 
       // Draw Doors swing arc
       if (room.doorWall && room.doorPos !== undefined) {
-        ctx.strokeStyle = '#fb8500'; // Princeton Orange doors
+        ctx.strokeStyle = '#fb8500'; 
         ctx.lineWidth = 2;
         ctx.beginPath();
         
-        const doorSize = scaleFeet(3); // 3 feet door width
+        const doorSize = scaleFeet(2.8); 
         let dx = rx;
         let dy = ry;
 
@@ -663,8 +647,8 @@ export const VasthuToolsView: React.FC = () => {
 
       // Draw Windows indicator
       if (room.windowWalls) {
-        ctx.strokeStyle = '#8ecae6'; // Sky Blue Light windows
-        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#8ecae6'; 
+        ctx.lineWidth = 3;
         
         room.windowWalls.forEach((wWall) => {
           ctx.beginPath();
@@ -687,68 +671,183 @@ export const VasthuToolsView: React.FC = () => {
       }
     });
 
-    // 3. Draw Plot dimension lines on margins
+    // 3. Draw Plot dimensions
     ctx.fillStyle = '#023047';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = 'bold 10px sans-serif';
     ctx.textAlign = 'center';
     
-    // Top dimension tag
-    ctx.fillText(`${plotWidth}'0"`, offsetX + (scaleFeet(plotWidth) / 2), offsetY - 12);
-    // Left dimension tag
+    ctx.fillText(`${plotWidth}'0"`, offsetX + (scaleFeet(plotWidth) / 2), offsetY - 10);
+    
     ctx.save();
-    ctx.translate(offsetX - 15, offsetY + (scaleFeet(plotLength) / 2));
+    ctx.translate(offsetX - 12, offsetY + (scaleFeet(plotLength) / 2));
     ctx.rotate(-Math.PI / 2);
     ctx.fillText(`${plotLength}'0"`, 0, 0);
     ctx.restore();
 
-    // 4. Draw North Arrow in bottom left
-    const navX = offsetX + scaleFeet(plotWidth) - 35;
-    const navY = offsetY + scaleFeet(plotLength) - 35;
-    ctx.strokeStyle = '#364156';
-    ctx.lineWidth = 1.5;
+    // 4. North Direction Arrow Indicator (Top-Left area)
+    const navX = 40;
+    const navY = 40;
+    ctx.strokeStyle = '#62899c';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(navX, navY, 20, 0, Math.PI * 2);
+    ctx.arc(navX, navY, 15, 0, Math.PI * 2);
     ctx.stroke();
     
     ctx.fillStyle = '#fb8500';
     ctx.beginPath();
-    ctx.moveTo(navX, navY - 18); // North pointer
-    ctx.lineTo(navX - 5, navY);
-    ctx.lineTo(navX + 5, navY);
+    ctx.moveTo(navX, navY - 13);
+    ctx.lineTo(navX - 4, navY);
+    ctx.lineTo(navX + 4, navY);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#023047';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.fillText('N', navX, navY - 22);
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText('N', navX, navY - 16);
 
     // Label road facing direction
     ctx.fillStyle = '#fb8500';
     ctx.font = 'bold 10px sans-serif';
-    if (plotFacing === 'West') {
-      ctx.fillText('⚡ MAIN ROAD ACCESS (WEST FACING) ⚡', offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 22);
-    } else {
-      ctx.fillText(`⚡ ROAD ACCESS (${plotFacing.toUpperCase()} FACING) ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 22);
-    }
+    ctx.fillText(`⚡ ${plotFacing.toUpperCase()} FACING ROAD ACCESS ⚡`, offsetX + (scaleFeet(plotWidth) / 2), offsetY + scaleFeet(plotLength) + 16);
+
+    // --- 5. DRAW BLUEPRINT TITLE BLOCK TABLE (bottom from y = 490 to y = 645) ---
+    const tY = 490;
+    ctx.strokeStyle = '#023047'; // Blueprint deep border lines
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(12, tY, canvas.width - 24, 150);
+    ctx.strokeRect(14, tY + 2, canvas.width - 28, 146);
+
+    // Draw Column Dividers
+    // Col 1 (x=15 to 110), Col 2 (x=110 to 220), Col 3 (x=220 to 310), Col 4 (x=310 to 410), Col 5 (x=410 to 485)
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(110, tY + 2); ctx.lineTo(110, tY + 148);
+    ctx.moveTo(220, tY + 2); ctx.lineTo(220, tY + 148);
+    ctx.moveTo(310, tY + 2); ctx.lineTo(310, tY + 148);
+    ctx.moveTo(410, tY + 2); ctx.lineTo(410, tY + 148);
+    ctx.stroke();
+
+    // Box 1 details (CONSTRUCTION & CLIENT)
+    ctx.fillStyle = '#023047';
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('CONSTRUCTION:', 18, tY + 15);
+    ctx.font = 'normal 8.5px sans-serif';
+    ctx.fillText(constructionType.toUpperCase(), 18, tY + 30);
+
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('CLIENT:', 18, tY + 80);
+    ctx.font = 'normal 8.5px sans-serif';
+    ctx.fillText(clientName.toUpperCase(), 18, tY + 95);
+
+    // Box 2 details (JOINERIES DETAILS Table)
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('JOINERIES DETAILS', 165, tY + 15);
+    
+    // Draw table rows inside Column 2
+    ctx.font = 'normal 8px sans-serif';
+    ctx.textAlign = 'left';
+    const jData = [
+      'MD   Main Door     3\'6" x 7\'0"',
+      'D     Door              3\'0" x 7\'0"',
+      'D2   Door              2\'6" x 7\'0"',
+      'W1   Window         5\'0" x 4\'0"',
+      'W2   Window         4\'0" x 4\'0"',
+      'V     Ventilator      2\'0" x 2\'0"'
+    ];
+    jData.forEach((row, i) => {
+      ctx.fillText(row, 115, tY + 32 + (i * 18));
+    });
+
+    // Box 3 details (TOTAL AREA & COMPASS)
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('TOTAL AREA', 265, tY + 15);
+    ctx.font = 'normal 8px sans-serif';
+    ctx.fillText('Buildup Area:', 265, tY + 35);
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = '#fb8500';
+    ctx.fillText(`${(plotWidth * plotLength * 0.85).toFixed(2)} Sqft`, 265, tY + 50);
+
+    // Compass indicator inside box 3
+    const cX = 265;
+    const cY = tY + 100;
+    ctx.strokeStyle = '#219ebc';
+    ctx.beginPath();
+    ctx.arc(cX, cY, 20, 0, Math.PI * 2);
+    ctx.stroke();
+    // North star
+    ctx.fillStyle = '#023047';
+    ctx.fillText('N', cX, cY - 24);
+    ctx.fillStyle = '#fb8500';
+    ctx.beginPath();
+    ctx.moveTo(cX, cY - 18);
+    ctx.lineTo(cX - 4, cY);
+    ctx.lineTo(cX + 4, cY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Box 4 details (DRAWING TITLE & DWG INFO)
+    ctx.fillStyle = '#023047';
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillText('DRAWING TITLE:', 315, tY + 15);
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = '#fb8500';
+    ctx.fillText(drawingTitle.toUpperCase(), 315, tY + 30);
+
+    ctx.fillStyle = '#023047';
+    ctx.font = 'bold 8px sans-serif';
+    const cDate = new Date().toLocaleDateString();
+    ctx.fillText(`DATE:  ${cDate}`, 315, tY + 70);
+    ctx.fillText(`SCALE: ${scaleLabel}`, 315, tY + 90);
+    ctx.fillText(`DWG NO: ${dwgNo.toUpperCase()}`, 315, tY + 110);
+
+    // Box 5 details (SIGNATURES BLOCK)
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText('CHECKED BY:', 415, tY + 15);
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillStyle = '#62899c';
+    ctx.fillText('ENGINEER', 415, tY + 30);
+
+    ctx.fillStyle = '#023047';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText('APPROVED BY:', 415, tY + 80);
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillStyle = '#62899c';
+    ctx.fillText('CHIEF ENG.', 415, tY + 95);
   };
 
-  // Trigger draw on tab active or parameters change
   useEffect(() => {
     if (activeTab === 'floorplan') {
       drawFloorPlan();
     }
-  }, [activeTab, plotWidth, plotLength, plotFacing, bedroomCount, includePooja, includeStairs, includeParking]);
+  }, [
+    activeTab, 
+    plotWidth, 
+    plotLength, 
+    plotFacing, 
+    bedroomCount, 
+    includePooja, 
+    includeStairs, 
+    includeParking,
+    clientName,
+    constructionType,
+    drawingTitle,
+    dwgNo,
+    scaleLabel
+  ]);
 
-  // Export Plan JPG
   const handleDownloadPlan = () => {
     const canvas = canvasRef.current;
     if (canvas) {
       const url = canvas.toDataURL('image/jpeg');
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Himalaya_Vasthu_2D_Plan_${plotWidth}x${plotLength}_${plotFacing}.jpg`;
+      a.download = `Himalaya_Blueprint_${clientName}_${plotWidth}x${plotLength}.jpg`;
       a.click();
-      addNotification('success', '2D Floor Plan downloaded successfully.');
+      addNotification('success', 'Blueprint image exported successfully.');
     }
   };
 
@@ -806,8 +905,6 @@ export const VasthuToolsView: React.FC = () => {
       {/* --- COMPASS TAB --- */}
       {activeTab === 'compass' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* Visual Compass Panel */}
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-6 shadow-xs flex flex-col items-center justify-between min-h-[500px]">
             
             <div className="w-full text-center mb-4">
@@ -898,7 +995,6 @@ export const VasthuToolsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Guidelines info side panel */}
           <div className="lg:col-span-5 space-y-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
               <div>
@@ -922,7 +1018,7 @@ export const VasthuToolsView: React.FC = () => {
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {VASTHU_RULES[selectedDirection].best.map((r, i) => (
-                      <span key={i} className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 px-2 py-1 rounded-lg">
+                      <span key={i} className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450 px-2 py-1 rounded-lg">
                         {r}
                       </span>
                     ))}
@@ -1153,108 +1249,174 @@ export const VasthuToolsView: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-250">
           
           {/* Controls Input Form (Left) */}
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Building2 className="h-4.5 w-4.5 text-[#fb8500]" />
-                Plot Parameters
-              </h3>
-              <p className="text-xs text-slate-500">Configure plot specifications and room requirements.</p>
-            </div>
+          <div className="lg:col-span-4 space-y-4">
+            
+            {/* Plot settings */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Building2 className="h-4.5 w-4.5 text-[#fb8500]" />
+                  Plot Parameters
+                </h3>
+                <p className="text-xs text-slate-500">Configure plot specifications and room requirements.</p>
+              </div>
 
-            {/* Plot Size */}
-            <div className="grid grid-cols-2 gap-3">
+              {/* Plot Size */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Width (Feet)</label>
+                  <input
+                    type="number"
+                    value={plotWidth}
+                    onChange={(e) => setPlotWidth(Math.max(10, parseInt(e.target.value) || 23))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Length (Feet)</label>
+                  <input
+                    type="number"
+                    value={plotLength}
+                    onChange={(e) => setPlotLength(Math.max(10, parseInt(e.target.value) || 39))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Road Facing */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Width (Feet)</label>
-                <input
-                  type="number"
-                  value={plotWidth}
-                  onChange={(e) => setPlotWidth(Math.max(10, parseInt(e.target.value) || 23))}
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Road Facing Direction</label>
+                <select
+                  value={plotFacing}
+                  onChange={(e: any) => setPlotFacing(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                />
+                >
+                  <option value="West">West (Road on West)</option>
+                  <option value="East">East (Road on East)</option>
+                  <option value="North">North (Road on North)</option>
+                  <option value="South">South (Road on South)</option>
+                </select>
               </div>
+
+              {/* Bedroom count */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Length (Feet)</label>
-                <input
-                  type="number"
-                  value={plotLength}
-                  onChange={(e) => setPlotLength(Math.max(10, parseInt(e.target.value) || 39))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                />
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Bedrooms</label>
+                <div className="flex gap-2">
+                  {[2, 3].map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => setBedroomCount(num as 2 | 3)}
+                      className={`flex-1 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        bedroomCount === num
+                          ? 'bg-[#fb8500] border-[#fb8500] text-white'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-850 dark:text-slate-300'
+                      }`}
+                    >
+                      {num} BHK Layout
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Road Facing */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-600 uppercase">Road Facing Direction</label>
-              <select
-                value={plotFacing}
-                onChange={(e: any) => setPlotFacing(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-              >
-                <option value="West">West (Road on West)</option>
-                <option value="East">East (Road on East)</option>
-                <option value="North">North (Road on North)</option>
-                <option value="South">South (Road on South)</option>
-              </select>
-            </div>
-
-            {/* Bedroom count */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-600 uppercase">Bedrooms</label>
-              <div className="flex gap-2">
-                {[2, 3].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setBedroomCount(num as 2 | 3)}
-                    className={`flex-1 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      bedroomCount === num
-                        ? 'bg-[#fb8500] border-[#fb8500] text-white'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-850 dark:text-slate-300'
-                    }`}
-                  >
-                    {num} BHK Layout
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Checklist additions */}
-            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/40">
-              <label className="text-[11px] font-bold text-slate-600 uppercase block">Include Spaces</label>
-              
-              <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includePooja}
-                  onChange={(e) => setIncludePooja(e.target.checked)}
-                  className="rounded border-slate-300 accent-[#fb8500] h-4 w-4"
-                />
-                <span>Pooja Room (NE Ishanya)</span>
-              </label>
-
-              <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeStairs}
-                  onChange={(e) => setIncludeStairs(e.target.checked)}
-                  className="rounded border-slate-300 accent-[#fb8500] h-4 w-4"
-                />
-                <span>Staircase (Internal/External)</span>
-              </label>
-
-              {bedroomCount === 2 && (
+              {/* Checklist additions */}
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                <label className="text-[11px] font-bold text-slate-600 uppercase block">Include Spaces</label>
+                
                 <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={includeParking}
-                    onChange={(e) => setIncludeParking(e.target.checked)}
+                    checked={includePooja}
+                    onChange={(e) => setIncludePooja(e.target.checked)}
                     className="rounded border-slate-300 accent-[#fb8500] h-4 w-4"
                   />
-                  <span>Car Parking / Portico</span>
+                  <span>Pooja Room (NE Ishanya)</span>
                 </label>
-              )}
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeStairs}
+                    onChange={(e) => setIncludeStairs(e.target.checked)}
+                    className="rounded border-slate-300 accent-[#fb8500] h-4 w-4"
+                  />
+                  <span>Staircase (Internal/External)</span>
+                </label>
+
+                {bedroomCount === 2 && (
+                  <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeParking}
+                      onChange={(e) => setIncludeParking(e.target.checked)}
+                      className="rounded border-slate-300 accent-[#fb8500] h-4 w-4"
+                    />
+                    <span>Car Parking / Portico</span>
+                  </label>
+                )}
+              </div>
             </div>
+
+            {/* Blueprint Title Block Metadata Form */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-4">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <FileText className="h-4.5 w-4.5 text-[#fb8500]" />
+                  Blueprint Details
+                </h3>
+                <p className="text-xs text-slate-500">Edit text blocks displayed on the exported design sheet.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Client Name</label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Construction Type</label>
+                  <input
+                    type="text"
+                    value={constructionType}
+                    onChange={(e) => setConstructionType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Drawing Title</label>
+                  <input
+                    type="text"
+                    value={drawingTitle}
+                    onChange={(e) => setDrawingTitle(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Dwg No</label>
+                    <input
+                      type="text"
+                      value={dwgNo}
+                      onChange={(e) => setDwgNo(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Scale</label>
+                    <input
+                      type="text"
+                      value={scaleLabel}
+                      onChange={(e) => setScaleLabel(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold focus:border-[#fb8500] focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           {/* Plan Canvas drawing (Right) */}
@@ -1277,16 +1439,16 @@ export const VasthuToolsView: React.FC = () => {
             </div>
 
             {/* Canvas Wrapper */}
-            <div className="border border-slate-200 dark:border-slate-800 bg-[#fffcf7] dark:bg-slate-950 rounded-2xl p-2 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
+            <div className="border border-slate-200 dark:border-slate-800 bg-[#fffdfa] rounded-2xl p-3 flex justify-center items-center shadow-inner relative max-w-full overflow-auto">
               <canvas
                 ref={canvasRef}
                 width={500}
-                height={500}
+                height={660} // Expanded height to accommodate Blueprint Title Block Table
                 className="max-w-full block"
               />
             </div>
 
-            {/* Core Vastu Checks table logs */}
+            {/* Vastu checklist cards */}
             <div className="w-full pt-6 space-y-3.5 border-t border-slate-100 dark:border-slate-800/40 mt-5">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Vastu Placement Compliance Feedback:
