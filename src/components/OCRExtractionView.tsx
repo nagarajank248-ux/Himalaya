@@ -44,6 +44,14 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
     addNotification('success', `Copied number ${phone} to clipboard.`);
   };
 
+  const handleCopyAll = () => {
+    if (detectedNumbers.length > 0) {
+      const allNumbersText = detectedNumbers.join('\n');
+      navigator.clipboard.writeText(allNumbersText);
+      addNotification('success', 'All detected contacts copied to clipboard.');
+    }
+  };
+
   const handleShare = (phone: string) => {
     const text = `Extracted builder contact: ${phone}`;
     if (navigator.share) {
@@ -212,7 +220,7 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
               </p>
               
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <label className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-500/10 transition-colors cursor-pointer">
+                <label className="flex items-center justify-center gap-2 bg-[#fb8500] hover:bg-[#e07500] text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-[#fb8500]/10 transition-colors cursor-pointer">
                   <Upload className="h-4.5 w-4.5" />
                   Select File
                   <input
@@ -227,7 +235,7 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
                   onClick={startCamera}
                   className="flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
                 >
-                  <Camera className="h-4.5 w-4.5 text-blue-500" />
+                  <Camera className="h-4.5 w-4.5 text-[#fb8500]" />
                   Use Camera
                 </button>
               </div>
@@ -289,7 +297,7 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
                 {status === 'idle' && (
                   <button
                     onClick={performOCR}
-                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/10 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 bg-[#fb8500] hover:bg-[#e07500] text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md shadow-[#fb8500]/10 transition-colors cursor-pointer"
                   >
                     Start Processing
                   </button>
@@ -329,11 +337,23 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
           
           {/* Detected Phone Numbers Panel */}
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-6 shadow-xs space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Detected Contacts
-              </h2>
-              <p className="text-xs text-slate-500">Phone numbers identified from scanning the document.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Detected Contacts
+                </h2>
+                <p className="text-xs text-slate-500">Phone numbers identified from scanning the document.</p>
+              </div>
+              
+              {detectedNumbers.length > 0 && (
+                <button
+                  onClick={handleCopyAll}
+                  className="flex items-center gap-1 bg-[#fb8500] hover:bg-[#e07500] text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy All
+                </button>
+              )}
             </div>
 
             <div className="space-y-3 min-h-[140px] flex flex-col justify-center">
@@ -358,7 +378,7 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
                       </a>
                       <button
                         onClick={() => handleCopy(number)}
-                        className="p-2 border border-slate-200 text-slate-500 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="p-2 border border-slate-200 text-slate-500 hover:text-[#fb8500] dark:border-slate-800 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         title="Copy"
                       >
                         <Copy className="h-3.5 w-3.5" />
@@ -379,7 +399,7 @@ export const OCRExtractionView: React.FC<OCRExtractionViewProps> = ({ onSaveAsLe
                       </button>
                       <button
                         onClick={() => onSaveAsLead({ phone: number, name: '', company: 'OCR Lead' })}
-                        className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                        className="flex items-center gap-1 bg-[#fb8500] hover:bg-[#e07500] text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                         title="Import as Lead"
                       >
                         <Plus className="h-3 w-3" />
